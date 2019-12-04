@@ -9,6 +9,17 @@ pub fn compute_crossing() -> i64 {
   compute_nearest_crossing(&a.to_owned(), &b.to_owned())
 }
 
+pub fn find_lowest_amount_of_steps() -> i64 {
+  let filename = "./src/aoc03/input.txt";
+  let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
+  let mut lines = contents.lines();
+  let a = lines.next().unwrap();
+  let b = lines.next().unwrap();
+  let cable_a = command_string_to_cable(&a.to_owned());
+  let cable_b = command_string_to_cable(&b.to_owned());
+  find_lowest_steps(cable_a, cable_b)
+}
+
 fn compute_nearest_crossing(first: &String, second: &String) -> i64 {
   let start = (0, 0);
   let cable_a = first
@@ -124,26 +135,93 @@ fn find_shortest_distance(start: Coords, list: CoordsList) -> i64 {
   })
 }
 
+fn command_string_to_cable(commands: &str) -> Cable {
+  commands
+    .split(",")
+    .into_iter()
+    .map(|string_command| into_command(&string_command.to_owned()))
+    .fold(vec![(0, 0)], |mut cable, command| wire(&mut cable, command))
+}
+
+fn find_lowest_steps(cable_a: Cable, cable_b: Cable) -> i64 {
+  let length = cable_a.len();
+  let start = cable_a.first().unwrap();
+  let mut step = -1;
+  let second = cable_b.iter().map(|coord| {
+    step = step + 1;
+    (coord, step)
+  });
+
+  let mut min_steps = std::i64::MAX;
+  let mut step = 0;
+  let mut run = 0;
+  for coord in cable_a.iter() {
+    run = run + 1;
+    if run % 500 == 0 {
+      println!("running run {} / {}", run, length);
+    }
+
+    if step > min_steps {
+      break;
+    }
+
+    let mut more_steps = 0;
+    for other in cable_b.iter() {
+      let necessary_steps = step + more_steps;
+      if (*coord == *other) && necessary_steps > 0 && (min_steps > necessary_steps) {
+        min_steps = necessary_steps;
+        break;
+      }
+      more_steps = more_steps + 1;
+    }
+    step = step + 1;
+  }
+  min_steps
+}
+
 #[cfg(test)]
 mod test {
   use super::*;
 
-  #[test]
-  fn example_01() {
-    let dist = compute_nearest_crossing(
-      &"R75,D30,R83,U83,L12,D49,R71,U7,L72".to_owned(),
-      &"U62,R66,U55,R34,D71,R55,D58,R83".to_owned(),
-    );
-    assert_eq!(159, dist);
+  mod part_2 {
+    use super::*;
+
+    #[test]
+    fn find_lowest_steps_example_00() {
+      let a = command_string_to_cable("R8,U5,L5,D3");
+      let b = command_string_to_cable("U7,R6,D4,L4");
+      let result = find_lowest_steps(a, b);
+      assert_eq!(30, result);
+    }
+
+    #[test]
+    fn find_lowest_steps_example_01() {
+      let a = command_string_to_cable("R75,D30,R83,U83,L12,D49,R71,U7,L72");
+      let b = command_string_to_cable("U62,R66,U55,R34,D71,R55,D58,R83");
+      let result = find_lowest_steps(a, b);
+      assert_eq!(610, result);
+    }
   }
 
-  #[test]
-  fn example_02() {
-    let dist = compute_nearest_crossing(
-      &"R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51".to_owned(),
-      &"U98,R91,D20,R16,D67,R40,U7,R15,U6,R7".to_owned(),
-    );
-    assert_eq!(135, dist);
+  mod part_1 {
+    use super::*;
+    #[test]
+    fn example_01() {
+      let dist = compute_nearest_crossing(
+        &"R75,D30,R83,U83,L12,D49,R71,U7,L72".to_owned(),
+        &"U62,R66,U55,R34,D71,R55,D58,R83".to_owned(),
+      );
+      assert_eq!(159, dist);
+    }
+
+    #[test]
+    fn example_02() {
+      let dist = compute_nearest_crossing(
+        &"R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51".to_owned(),
+        &"U98,R91,D20,R16,D67,R40,U7,R15,U6,R7".to_owned(),
+      );
+      assert_eq!(135, dist);
+    }
   }
 
   mod manhattan_distance_of {

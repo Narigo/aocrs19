@@ -15,4 +15,5 @@ fn main() {
     // println!("aoc03_02 = {}", aoc03::find_lowest_amount_of_steps());
     println!("aoc04_01 = {}", aoc04::find_amount_of_possible_passwords());
     println!("aoc04_02 = {}", aoc04::find_possible_passwords());
+    println!("aoc05_01 = {}", aoc05::program_1205_01());
 }

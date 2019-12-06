@@ -53,20 +53,16 @@ fn code_to_command(opcode: usize) -> Command {
   use Parameter::*;
 
   let operation = opcode % 100;
-  let param1 = (opcode / 100) % 10;
-  let param2 = (opcode / 1000) % 10;
-  let param3 = (opcode / 10000) % 10;
+  let retrieve_param = |n: u32| {
+    if (opcode / (10 as usize).pow(n + 1)) % 10 == 0 {
+      Position
+    } else {
+      Immediate
+    }
+  };
   match operation {
-    1 => Add(
-      if param1 == 0 { Position } else { Immediate },
-      if param2 == 0 { Position } else { Immediate },
-      if param3 == 0 { Position } else { Immediate },
-    ),
-    2 => Multiply(
-      if param1 == 0 { Position } else { Immediate },
-      if param2 == 0 { Position } else { Immediate },
-      if param3 == 0 { Position } else { Immediate },
-    ),
+    1 => Add(retrieve_param(1), retrieve_param(2), retrieve_param(3)),
+    2 => Multiply(retrieve_param(1), retrieve_param(2), retrieve_param(3)),
     99 => End,
     _ => panic!("nothing found! Something's off!"),
   }

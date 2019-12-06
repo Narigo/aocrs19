@@ -14,22 +14,27 @@ pub fn computer_1202(contents: &String, fix_data: bool) -> Vec<usize> {
 
 pub fn interprete(result: &mut Vec<usize>, index: usize) {
   use Command::*;
+  use Parameter::*;
   let opcode = result[index];
   let command = code_to_command(opcode);
+  let get_by_offset = |mode: Parameter, offset: usize| match mode {
+    Position => result[index + offset],
+    Immediate => index + offset,
+  };
   match command {
-    Add(_, _, _) => {
-      let a = result[result[index + 1]];
-      let b = result[result[index + 2]];
-      let position = result[index + 3];
-      let output = a + b;
+    Add(mode_a, mode_b, mode_position) => {
+      let a = get_by_offset(mode_a, 1);
+      let b = get_by_offset(mode_b, 2);
+      let position = get_by_offset(mode_position, 3);
+      let output = result[a] + result[b];
       result[position] = output;
       interprete(result, index + 4);
     }
-    Multiply(_, _, _) => {
-      let a = result[result[index + 1]];
-      let b = result[result[index + 2]];
-      let position = result[index + 3];
-      let output = a * b;
+    Multiply(mode_a, mode_b, mode_position) => {
+      let a = get_by_offset(mode_a, 1);
+      let b = get_by_offset(mode_b, 2);
+      let position = get_by_offset(mode_position, 3);
+      let output = result[a] * result[b];
       result[position] = output;
       interprete(result, index + 4);
     }
@@ -54,7 +59,8 @@ fn code_to_command(opcode: usize) -> Command {
 
   let operation = opcode % 100;
   let retrieve_param = |n: u32| {
-    if (opcode / (10 as usize).pow(n + 1)) % 10 == 0 {
+    let mode = (opcode / (10 as usize).pow(n + 1)) % 10;
+    if mode == 0 {
       Position
     } else {
       Immediate
@@ -71,6 +77,26 @@ fn code_to_command(opcode: usize) -> Command {
 #[cfg(test)]
 mod test {
   use super::computer_1202;
+
+  #[test]
+  fn can_add_with_immediate_mode() {
+    let input = "1101,2,3,3,99";
+    let expected = "[1101, 2, 3, 5, 99]";
+    assert_eq!(
+      expected,
+      format!("{:?}", computer_1202(&input.to_owned(), false))
+    )
+  }
+
+  #[test]
+  fn can_multiply_with_immediate_mode() {
+    let input = "1002,4,3,4,33";
+    let expected = "[1002, 4, 3, 4, 99]";
+    assert_eq!(
+      expected,
+      format!("{:?}", computer_1202(&input.to_owned(), false))
+    )
+  }
 
   #[test]
   fn adds_with_opcode_1() {

@@ -1,9 +1,9 @@
-pub struct Result {
+pub struct ComputationResult {
   pub state: Vec<i32>,
   pub output: i32,
 }
 
-pub fn computer_1202(contents: &String, fix_data: bool, input_value: Option<i32>) -> Result {
+pub fn computer_1202(contents: &String, fix_data: bool, input_value: Option<i32>) -> ComputationResult {
   let input = contents
     .split(",")
     .map(|n| n.parse::<i32>().unwrap())
@@ -15,7 +15,7 @@ pub fn computer_1202(contents: &String, fix_data: bool, input_value: Option<i32>
   }
   let mut current_input = input_value.clone();
   interprete(&mut result, 0, &mut current_input);
-  Result {
+  ComputationResult {
     state: result,
     output: current_input.unwrap_or(0),
   }

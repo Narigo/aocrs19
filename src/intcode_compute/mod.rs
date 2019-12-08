@@ -3,7 +3,11 @@ pub struct ComputationResult {
   pub output: i32,
 }
 
-pub fn computer_1202(contents: &String, fix_data: bool, input_value: Option<i32>) -> ComputationResult {
+pub fn computer_1202(
+  contents: &String,
+  fix_data: bool,
+  input_value: Option<i32>,
+) -> ComputationResult {
   let input = contents
     .split(",")
     .map(|n| n.parse::<i32>().unwrap())
@@ -13,15 +17,15 @@ pub fn computer_1202(contents: &String, fix_data: bool, input_value: Option<i32>
     result[1] = 12;
     result[2] = 2;
   }
-  let mut current_input = input_value.clone();
-  interprete(&mut result, 0, &mut current_input);
+  let current_input = input_value.clone();
+  let output = interprete(&mut result, 0, &current_input);
   ComputationResult {
     state: result,
-    output: current_input.unwrap_or(0),
+    output: output.unwrap_or(0),
   }
 }
 
-pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &mut Option<i32>) {
+pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &Option<i32>) -> Option<i32> {
   use Command::*;
   use Parameter::*;
   let opcode = result[index];
@@ -37,7 +41,7 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &mut Optio
       let position = get_by_offset(mode_position, 3);
       let output = result[a] + result[b];
       result[position] = output;
-      interprete(result, index + 4, current_input);
+      interprete(result, index + 4, current_input)
     }
     Multiply(mode_a, mode_b, mode_position) => {
       let a = get_by_offset(mode_a, 1);
@@ -45,34 +49,34 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &mut Optio
       let position = get_by_offset(mode_position, 3);
       let output = result[a] * result[b];
       result[position] = output;
-      interprete(result, index + 4, current_input);
+      interprete(result, index + 4, current_input)
     }
     Input(mode) => {
       let position = get_by_offset(mode, 1);
       result[position] = current_input.unwrap();
-      interprete(result, index + 2, &mut None);
+      interprete(result, index + 2, &mut None)
     }
     Output(mode) => {
       let position = get_by_offset(mode, 1);
       let next_input = result[position];
-      interprete(result, index + 2, &mut Some(next_input));
+      interprete(result, index + 2, &Some(next_input))
     }
     JumpIfTrue(mode_a, mode_b) => {
       let test_non_zero = get_by_offset(mode_a, 1);
       let next_index = get_by_offset(mode_b, 2);
       if result[test_non_zero] != 0 {
-        interprete(result, next_index, current_input);
+        interprete(result, result[next_index] as usize, current_input)
       } else {
-        interprete(result, index + 3, current_input);
+        interprete(result, index + 3, current_input)
       }
     }
     JumpIfFalse(mode_a, mode_b) => {
       let test_zero = get_by_offset(mode_a, 1);
       let next_index = get_by_offset(mode_b, 2);
       if result[test_zero] == 0 {
-        interprete(result, next_index, current_input);
+        interprete(result, result[next_index] as usize, current_input)
       } else {
-        interprete(result, index + 3, current_input);
+        interprete(result, index + 3, current_input)
       }
     }
     LessThan(mode_a, mode_b, mode_position) => {
@@ -84,6 +88,7 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &mut Optio
       } else {
         result[position] = 0;
       }
+      interprete(result, index + 4, current_input)
     }
     Equals(mode_a, mode_b, mode_position) => {
       let a = get_by_offset(mode_a, 1);
@@ -94,14 +99,13 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &mut Optio
       } else {
         result[position] = 0;
       }
+      interprete(result, index + 4, current_input)
     }
-    End => match current_input {
-      Some(diagnostic_code) => println!("{}", diagnostic_code),
-      _ => {}
-    },
+    End => *current_input,
   }
 }
 
+#[derive(Debug)]
 enum Parameter {
   Immediate,
   Position,
@@ -149,6 +153,88 @@ fn code_to_command(opcode: i32) -> Command {
 #[cfg(test)]
 mod test {
   use super::computer_1202;
+
+  #[test]
+  fn equal_to_8() {
+    let input = "3,9,8,9,10,9,4,9,99,-1,8";
+    let eq_eight = Some(8);
+    let not_eight_1 = Some(9);
+    let not_eight_2 = Some(5);
+    let not_eight_3 = Some(10);
+    let not_eight_4 = Some(0);
+
+    assert_eq!(1, computer_1202(&input.to_owned(), false, eq_eight).output);
+    assert_eq!(
+      0,
+      computer_1202(&input.to_owned(), false, not_eight_1).output
+    );
+    assert_eq!(
+      0,
+      computer_1202(&input.to_owned(), false, not_eight_2).output
+    );
+    assert_eq!(
+      0,
+      computer_1202(&input.to_owned(), false, not_eight_3).output
+    );
+    assert_eq!(
+      0,
+      computer_1202(&input.to_owned(), false, not_eight_4).output
+    );
+  }
+  #[test]
+  fn larger_jump_example() {
+    let input = "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99";
+    let lt_eight = Some(7);
+    let eq_eight = Some(8);
+    let gt_eight = Some(9);
+    assert_eq!(
+      999,
+      computer_1202(&input.to_owned(), false, lt_eight).output
+    );
+    assert_eq!(
+      1000,
+      computer_1202(&input.to_owned(), false, eq_eight).output
+    );
+    assert_eq!(
+      1001,
+      computer_1202(&input.to_owned(), false, gt_eight).output
+    );
+  }
+  #[test]
+  fn jump_test_position_mode() {
+    let input = "3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9";
+    let input_parameter = Some(0);
+    let expected_output = 0;
+    assert_eq!(
+      expected_output,
+      computer_1202(&input.to_owned(), false, input_parameter).output
+    );
+
+    let input_parameter = Some(1);
+    let expected_output = 1;
+    assert_eq!(
+      expected_output,
+      computer_1202(&input.to_owned(), false, input_parameter).output
+    )
+  }
+
+  #[test]
+  fn jump_test_immediate_mode() {
+    let input = "3,3,1105,-1,9,1101,0,0,12,4,12,99,1";
+    let input_parameter = Some(0);
+    let expected_output = 0;
+    assert_eq!(
+      expected_output,
+      computer_1202(&input.to_owned(), false, input_parameter).output
+    );
+
+    let input_parameter = Some(1);
+    let expected_output = 1;
+    assert_eq!(
+      expected_output,
+      computer_1202(&input.to_owned(), false, input_parameter).output
+    )
+  }
 
   #[test]
   fn can_add_negative_numbers() {

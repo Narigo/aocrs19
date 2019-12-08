@@ -3,6 +3,7 @@ mod aoc02;
 mod aoc03;
 mod aoc04;
 mod aoc05;
+mod aoc06;
 mod intcode_compute;
 
 fn main() {
@@ -16,4 +17,7 @@ fn main() {
     println!("aoc04_01 = {}", aoc04::find_amount_of_possible_passwords());
     println!("aoc04_02 = {}", aoc04::find_possible_passwords());
     println!("aoc05_01 = {}", aoc05::program_1205_01());
+    println!("aoc05_02 = {}", aoc05::program_1205_02());
+    println!("aoc06_01 = {}", aoc06::orbit_checksum());
+    println!("aoc06_02 = {}", aoc06::orbit_transfers());
 }

@@ -4,6 +4,7 @@ mod aoc03;
 mod aoc04;
 mod aoc05;
 mod aoc06;
+mod aoc07;
 mod intcode_compute;
 
 fn main() {
@@ -20,4 +21,5 @@ fn main() {
     println!("aoc05_02 = {}", aoc05::program_1205_02());
     println!("aoc06_01 = {}", aoc06::orbit_checksum());
     println!("aoc06_02 = {}", aoc06::orbit_transfers());
+    println!("aoc07_01 = {}", aoc07::program_1207_01());
 }

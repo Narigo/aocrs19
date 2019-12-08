@@ -4,11 +4,11 @@ pub struct ComputationResult {
 }
 
 pub fn computer_1202(
-  contents: &String,
+  program: &String,
   fix_data: bool,
-  input_value: Option<i32>,
+  input_values: Vec<i32>,
 ) -> ComputationResult {
-  let input = contents
+  let input = program
     .split(",")
     .map(|n| n.parse::<i32>().unwrap())
     .collect::<Vec<i32>>();
@@ -17,15 +17,14 @@ pub fn computer_1202(
     result[1] = 12;
     result[2] = 2;
   }
-  let current_input = input_value.clone();
-  let output = interprete(&mut result, 0, &current_input);
+  let output = interprete(&mut result, 0, &mut input_values.clone());
   ComputationResult {
     state: result,
     output: output.unwrap_or(0),
   }
 }
 
-pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &Option<i32>) -> Option<i32> {
+pub fn interprete(result: &mut Vec<i32>, index: usize, input_values: &mut Vec<i32>) -> Option<i32> {
   use Command::*;
   use Parameter::*;
   let opcode = result[index];
@@ -41,7 +40,7 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &Option<i3
       let position = get_by_offset(mode_position, 3);
       let output = result[a] + result[b];
       result[position] = output;
-      interprete(result, index + 4, current_input)
+      interprete(result, index + 4, input_values)
     }
     Multiply(mode_a, mode_b, mode_position) => {
       let a = get_by_offset(mode_a, 1);
@@ -49,34 +48,37 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &Option<i3
       let position = get_by_offset(mode_position, 3);
       let output = result[a] * result[b];
       result[position] = output;
-      interprete(result, index + 4, current_input)
+      interprete(result, index + 4, input_values)
     }
     Input(mode) => {
       let position = get_by_offset(mode, 1);
-      result[position] = current_input.unwrap();
-      interprete(result, index + 2, &mut None)
+      result[position] = input_values
+        .pop()
+        .expect("Should have an input value left!");
+      interprete(result, index + 2, input_values)
     }
     Output(mode) => {
       let position = get_by_offset(mode, 1);
       let next_input = result[position];
-      interprete(result, index + 2, &Some(next_input))
+      input_values.push(next_input);
+      interprete(result, index + 2, input_values)
     }
     JumpIfTrue(mode_a, mode_b) => {
       let test_non_zero = get_by_offset(mode_a, 1);
       let next_index = get_by_offset(mode_b, 2);
       if result[test_non_zero] != 0 {
-        interprete(result, result[next_index] as usize, current_input)
+        interprete(result, result[next_index] as usize, input_values)
       } else {
-        interprete(result, index + 3, current_input)
+        interprete(result, index + 3, input_values)
       }
     }
     JumpIfFalse(mode_a, mode_b) => {
       let test_zero = get_by_offset(mode_a, 1);
       let next_index = get_by_offset(mode_b, 2);
       if result[test_zero] == 0 {
-        interprete(result, result[next_index] as usize, current_input)
+        interprete(result, result[next_index] as usize, input_values)
       } else {
-        interprete(result, index + 3, current_input)
+        interprete(result, index + 3, input_values)
       }
     }
     LessThan(mode_a, mode_b, mode_position) => {
@@ -88,7 +90,7 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &Option<i3
       } else {
         result[position] = 0;
       }
-      interprete(result, index + 4, current_input)
+      interprete(result, index + 4, input_values)
     }
     Equals(mode_a, mode_b, mode_position) => {
       let a = get_by_offset(mode_a, 1);
@@ -99,9 +101,9 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, current_input: &Option<i3
       } else {
         result[position] = 0;
       }
-      interprete(result, index + 4, current_input)
+      interprete(result, index + 4, input_values)
     }
-    End => *current_input,
+    End => input_values.first().cloned(),
   }
 }
 
@@ -146,7 +148,10 @@ fn code_to_command(opcode: i32) -> Command {
     7 => LessThan(retrieve_param(1), retrieve_param(2), retrieve_param(3)),
     8 => Equals(retrieve_param(1), retrieve_param(2), retrieve_param(3)),
     99 => End,
-    _ => panic!("nothing found! Something's off!"),
+    _ => {
+      println!("Looked at opcode {}", opcode);
+      panic!("nothing found! Something's off!")
+    }
   }
 }
 
@@ -157,11 +162,11 @@ mod test {
   #[test]
   fn equal_to_8() {
     let input = "3,9,8,9,10,9,4,9,99,-1,8";
-    let eq_eight = Some(8);
-    let not_eight_1 = Some(9);
-    let not_eight_2 = Some(5);
-    let not_eight_3 = Some(10);
-    let not_eight_4 = Some(0);
+    let eq_eight = vec![8];
+    let not_eight_1 = vec![9];
+    let not_eight_2 = vec![5];
+    let not_eight_3 = vec![10];
+    let not_eight_4 = vec![0];
 
     assert_eq!(1, computer_1202(&input.to_owned(), false, eq_eight).output);
     assert_eq!(
@@ -184,9 +189,9 @@ mod test {
   #[test]
   fn larger_jump_example() {
     let input = "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99";
-    let lt_eight = Some(7);
-    let eq_eight = Some(8);
-    let gt_eight = Some(9);
+    let lt_eight = vec![7];
+    let eq_eight = vec![8];
+    let gt_eight = vec![9];
     assert_eq!(
       999,
       computer_1202(&input.to_owned(), false, lt_eight).output
@@ -203,14 +208,14 @@ mod test {
   #[test]
   fn jump_test_position_mode() {
     let input = "3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9";
-    let input_parameter = Some(0);
+    let input_parameter = vec![0];
     let expected_output = 0;
     assert_eq!(
       expected_output,
       computer_1202(&input.to_owned(), false, input_parameter).output
     );
 
-    let input_parameter = Some(1);
+    let input_parameter = vec![1];
     let expected_output = 1;
     assert_eq!(
       expected_output,
@@ -221,14 +226,14 @@ mod test {
   #[test]
   fn jump_test_immediate_mode() {
     let input = "3,3,1105,-1,9,1101,0,0,12,4,12,99,1";
-    let input_parameter = Some(0);
+    let input_parameter = vec![0];
     let expected_output = 0;
     assert_eq!(
       expected_output,
       computer_1202(&input.to_owned(), false, input_parameter).output
     );
 
-    let input_parameter = Some(1);
+    let input_parameter = vec![1];
     let expected_output = 1;
     assert_eq!(
       expected_output,
@@ -242,7 +247,10 @@ mod test {
     let expected = "[1101, 100, -1, 4, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -254,7 +262,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, Some(123)).state
+        computer_1202(&input.to_owned(), false, vec![123]).state
       )
     )
   }
@@ -264,7 +272,10 @@ mod test {
     let expected = "[1101, 2, 3, 5, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -274,7 +285,10 @@ mod test {
     let expected = "[1002, 4, 3, 4, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -284,7 +298,10 @@ mod test {
     let expected = "[1, 2, 3, 6, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -294,7 +311,10 @@ mod test {
     let expected = "[2, 2, 3, 9, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -304,7 +324,10 @@ mod test {
     let expected = "[1, 2, 3, 6, 2, 2, 3, 18, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -314,7 +337,10 @@ mod test {
     let expected = "[1, 1, 1, 4, 2, 3, 3, 16, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -324,7 +350,10 @@ mod test {
     let expected = "[2, 0, 0, 0, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -334,7 +363,10 @@ mod test {
     let expected = "[2, 3, 0, 6, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -344,7 +376,10 @@ mod test {
     let expected = "[2, 4, 4, 5, 99, 9801]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -354,7 +389,10 @@ mod test {
     let expected = "[30, 1, 1, 4, 2, 5, 6, 0, 99]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -364,7 +402,10 @@ mod test {
     let expected = "[1, 1, 1, 4, 2, 9, 10, 8, 99, 3, 33]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), false, None).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), false, vec![]).state
+      )
     )
   }
 
@@ -374,7 +415,7 @@ mod test {
     let expected = "[1, 12, 2, 2, 99, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), true, None).state)
+      format!("{:?}", computer_1202(&input.to_owned(), true, vec![]).state)
     )
   }
 }

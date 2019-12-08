@@ -4,7 +4,7 @@ use std::fs;
 pub fn program_1202_01() -> i32 {
   let filename = "./src/aoc02/input.txt";
   let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
-  computer_1202(&contents, true, None).state[0]
+  computer_1202(&contents, true, vec![]).state[0]
 }
 
 pub fn program_1202_02() -> i32 {
@@ -19,7 +19,7 @@ pub fn program_1202_02() -> i32 {
       let mut result = input.clone();
       result[1] = noun;
       result[2] = verb;
-      interprete(&mut result, 0, &mut None);
+      interprete(&mut result, 0, &mut vec![]);
       if result[0] == 19690720 {
         return 100 * noun + verb;
       }

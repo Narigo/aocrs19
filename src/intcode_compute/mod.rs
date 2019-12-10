@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 pub struct ComputationResult {
   pub state: Vec<i32>,
   pub output: i32,
@@ -6,7 +8,7 @@ pub struct ComputationResult {
 pub fn computer_1202(
   program: &String,
   fix_data: bool,
-  input_values: Vec<i32>,
+  input_values: VecDeque<i32>,
 ) -> ComputationResult {
   let input = program
     .split(",")
@@ -24,7 +26,11 @@ pub fn computer_1202(
   }
 }
 
-pub fn interprete(result: &mut Vec<i32>, index: usize, input_values: &mut Vec<i32>) -> Option<i32> {
+pub fn interprete(
+  result: &mut Vec<i32>,
+  index: usize,
+  input_values: &mut VecDeque<i32>,
+) -> Option<i32> {
   use Command::*;
   use Parameter::*;
   let opcode = result[index];
@@ -53,14 +59,14 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, input_values: &mut Vec<i3
     Input(mode) => {
       let position = get_by_offset(mode, 1);
       result[position] = input_values
-        .pop()
+        .pop_back()
         .expect("Should have an input value left!");
       interprete(result, index + 2, input_values)
     }
     Output(mode) => {
       let position = get_by_offset(mode, 1);
       let next_input = result[position];
-      input_values.push(next_input);
+      input_values.push_back(next_input);
       interprete(result, index + 2, input_values)
     }
     JumpIfTrue(mode_a, mode_b) => {
@@ -103,7 +109,7 @@ pub fn interprete(result: &mut Vec<i32>, index: usize, input_values: &mut Vec<i3
       }
       interprete(result, index + 4, input_values)
     }
-    End => input_values.first().cloned(),
+    End => input_values.front().cloned(),
   }
 }
 
@@ -158,15 +164,16 @@ fn code_to_command(opcode: i32) -> Command {
 #[cfg(test)]
 mod test {
   use super::computer_1202;
+  use std::collections::VecDeque;
 
   #[test]
   fn equal_to_8() {
     let input = "3,9,8,9,10,9,4,9,99,-1,8";
-    let eq_eight = vec![8];
-    let not_eight_1 = vec![9];
-    let not_eight_2 = vec![5];
-    let not_eight_3 = vec![10];
-    let not_eight_4 = vec![0];
+    let eq_eight = VecDeque::from(vec![8]);
+    let not_eight_1 = VecDeque::from(vec![9]);
+    let not_eight_2 = VecDeque::from(vec![5]);
+    let not_eight_3 = VecDeque::from(vec![10]);
+    let not_eight_4 = VecDeque::from(vec![0]);
 
     assert_eq!(1, computer_1202(&input.to_owned(), false, eq_eight).output);
     assert_eq!(
@@ -189,9 +196,9 @@ mod test {
   #[test]
   fn larger_jump_example() {
     let input = "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99";
-    let lt_eight = vec![7];
-    let eq_eight = vec![8];
-    let gt_eight = vec![9];
+    let lt_eight = VecDeque::from(vec![7]);
+    let eq_eight = VecDeque::from(vec![8]);
+    let gt_eight = VecDeque::from(vec![9]);
     assert_eq!(
       999,
       computer_1202(&input.to_owned(), false, lt_eight).output
@@ -208,14 +215,14 @@ mod test {
   #[test]
   fn jump_test_position_mode() {
     let input = "3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9";
-    let input_parameter = vec![0];
+    let input_parameter = VecDeque::from(vec![0]);
     let expected_output = 0;
     assert_eq!(
       expected_output,
       computer_1202(&input.to_owned(), false, input_parameter).output
     );
 
-    let input_parameter = vec![1];
+    let input_parameter = VecDeque::from(vec![1]);
     let expected_output = 1;
     assert_eq!(
       expected_output,
@@ -226,14 +233,14 @@ mod test {
   #[test]
   fn jump_test_immediate_mode() {
     let input = "3,3,1105,-1,9,1101,0,0,12,4,12,99,1";
-    let input_parameter = vec![0];
+    let input_parameter = VecDeque::from(vec![0]);
     let expected_output = 0;
     assert_eq!(
       expected_output,
       computer_1202(&input.to_owned(), false, input_parameter).output
     );
 
-    let input_parameter = vec![1];
+    let input_parameter = VecDeque::from(vec![1]);
     let expected_output = 1;
     assert_eq!(
       expected_output,
@@ -249,7 +256,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -262,7 +269,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![123]).state
+        computer_1202(&input.to_owned(), false, VecDeque::from(vec![123])).state
       )
     )
   }
@@ -274,7 +281,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -287,7 +294,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -300,7 +307,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -313,7 +320,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -326,7 +333,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -339,7 +346,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -352,7 +359,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -365,7 +372,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -378,7 +385,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -391,7 +398,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -404,7 +411,7 @@ mod test {
       expected,
       format!(
         "{:?}",
-        computer_1202(&input.to_owned(), false, vec![]).state
+        computer_1202(&input.to_owned(), false, VecDeque::new()).state
       )
     )
   }
@@ -415,7 +422,10 @@ mod test {
     let expected = "[1, 12, 2, 2, 99, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]";
     assert_eq!(
       expected,
-      format!("{:?}", computer_1202(&input.to_owned(), true, vec![]).state)
+      format!(
+        "{:?}",
+        computer_1202(&input.to_owned(), true, VecDeque::new()).state
+      )
     )
   }
 }

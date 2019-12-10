@@ -2,6 +2,7 @@ extern crate itertools;
 use itertools::Itertools;
 
 use crate::intcode_compute::computer_1202;
+use std::collections::VecDeque;
 use std::fs;
 
 pub fn program_1207_01() -> i32 {
@@ -38,7 +39,11 @@ struct Amplifier {
 
 impl Amplifier {
   fn calculate_output(&self, input_value: i32) -> i32 {
-    let result = computer_1202(&self.program, false, vec![input_value, self.phase_setting]);
+    let result = computer_1202(
+      &self.program,
+      false,
+      VecDeque::from(vec![input_value, self.phase_setting]),
+    );
     result.output
   }
 }

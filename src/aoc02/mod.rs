@@ -5,7 +5,7 @@ use std::fs;
 pub fn program_1202_01() -> i32 {
   let filename = "./src/aoc02/input.txt";
   let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
-  computer_1202(&contents, true, VecDeque::new()).state[0]
+  computer_1202(&contents, true, &mut VecDeque::new()).state[0]
 }
 
 pub fn program_1202_02() -> i32 {

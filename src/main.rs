@@ -22,4 +22,6 @@ fn main() {
     println!("aoc06_01 = {}", aoc06::orbit_checksum());
     println!("aoc06_02 = {}", aoc06::orbit_transfers());
     println!("aoc07_01 = {}", aoc07::program_1207_01());
+    // println!("aoc07_02 = {}", aoc07::program_1207_02());
+    aoc07::test::example_amplifier_2_feedback_looped();
 }

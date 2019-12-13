@@ -39,35 +39,44 @@ fn find_maximum_with_feedback(amplifier_program: &String) -> i32 {
   let permutations = (5..10).permutations(5);
   let mut maximum_output = std::i32::MIN;
   for permutation in permutations {
-    let mut max_of_permutation = std::i32::MIN;
-    let mut last_input_output_value = std::i32::MIN;
-    let mut input_output_value = 0;
-
-    let mut amplifiers = Vec::new();
-    for phase_setting in permutation.iter() {
-      let amplifier = Amplifier::new(amplifier_program.clone(), *phase_setting as i32);
-      amplifiers.push(amplifier);
-    }
-
-    while last_input_output_value != input_output_value {
-      last_input_output_value = input_output_value;
-      println!("in permutation {:?}", permutation);
-      println!("feedback loop input: {}", input_output_value);
-      for amplifier in amplifiers.iter_mut() {
-        input_output_value = amplifier.calculate_output(input_output_value);
-        println!("amplifier output: {}", input_output_value);
-      }
-      if max_of_permutation < input_output_value {
-        max_of_permutation = input_output_value;
-      }
-      println!("max_of_permutation: {}", max_of_permutation);
-    }
+    let max_of_permutation =
+      find_maximum_with_feedback_of_permutation(amplifier_program, permutation);
 
     if maximum_output < max_of_permutation {
       maximum_output = max_of_permutation;
     }
   }
   maximum_output
+}
+
+fn find_maximum_with_feedback_of_permutation(
+  amplifier_program: &String,
+  permutation: Vec<i32>,
+) -> i32 {
+  let mut max_of_permutation = std::i32::MIN;
+  let mut last_input_output_value = std::i32::MIN;
+  let mut input_output_value = 0;
+
+  let mut amplifiers = Vec::new();
+  for phase_setting in permutation.iter() {
+    let amplifier = Amplifier::new(amplifier_program.clone(), *phase_setting as i32);
+    amplifiers.push(amplifier);
+  }
+
+  while last_input_output_value < input_output_value {
+    last_input_output_value = input_output_value;
+    println!("in permutation {:?}", permutation);
+    println!("feedback loop input: {}", input_output_value);
+    for amplifier in amplifiers.iter_mut() {
+      input_output_value = amplifier.calculate_output(input_output_value);
+      println!("amplifier output: {}", input_output_value);
+    }
+    if max_of_permutation < input_output_value {
+      max_of_permutation = input_output_value;
+    }
+    println!("max_of_permutation: {}", max_of_permutation);
+  }
+  max_of_permutation
 }
 
 #[derive(Clone, Debug)]
@@ -92,16 +101,27 @@ impl Amplifier {
   }
 }
 
-#[cfg(test)]
-mod test {
+// #[cfg(test)]
+pub mod test {
   use super::*;
 
   #[test]
-  fn example_amplifier_feedback_looped() {
+  fn example_amplifier_1_feedback_looped() {
     let program =
       "3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5";
     let expected = 139629729;
-    let result = find_maximum_with_feedback(&program.to_owned());
+    let result =
+      find_maximum_with_feedback_of_permutation(&program.to_owned(), vec![9, 8, 7, 6, 5]);
+    assert_eq!(expected, result);
+  }
+
+  // #[test]
+  pub fn example_amplifier_2_feedback_looped() {
+    let program =
+      "3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10";
+    let expected = 18216;
+    let result =
+      find_maximum_with_feedback_of_permutation(&program.to_owned(), vec![9, 7, 8, 5, 6]);
     assert_eq!(expected, result);
   }
 

@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 pub struct ComputationResult {
   pub state: Vec<i32>,
-  pub output: i32,
+  pub output: Option<i32>,
 }
 
 pub fn computer_1202(
@@ -19,97 +19,131 @@ pub fn computer_1202(
     result[1] = 12;
     result[2] = 2;
   }
-  let output = interprete(&mut result, 0, input_values);
+  let mut amplifier = Amplifier {
+    program: result
+      .iter()
+      .map(|x| format!("{}", x))
+      .collect::<Vec<String>>()
+      .join(","),
+    phase_setting: 0,
+    input_value: input_values.clone(),
+    output_value: None,
+  };
+  let output = amplifier.interprete(&mut result, 0, input_values);
   ComputationResult {
     state: result,
-    output: output.unwrap_or(0),
+    output: output,
   }
 }
 
-pub fn interprete(
-  result: &mut Vec<i32>,
-  index: usize,
-  input_values: &mut VecDeque<i32>,
-) -> Option<i32> {
-  use Command::*;
-  use Parameter::*;
-  let opcode = result[index];
-  let command = code_to_command(opcode);
-  let get_by_offset = |mode: Parameter, offset: i32| match mode {
-    Position => result[(index as i32 + offset) as usize] as usize,
-    Immediate => (index as i32 + offset) as usize,
-  };
-  match command {
-    Add(mode_a, mode_b, mode_position) => {
-      let a = get_by_offset(mode_a, 1);
-      let b = get_by_offset(mode_b, 2);
-      let position = get_by_offset(mode_position, 3);
-      let output = result[a] + result[b];
-      result[position] = output;
-      interprete(result, index + 4, input_values)
+#[derive(Clone, Debug)]
+pub struct Amplifier {
+  pub program: String,
+  pub phase_setting: i32,
+  pub input_value: VecDeque<i32>,
+  pub output_value: Option<i32>,
+}
+
+impl Amplifier {
+  pub fn new(program: String, phase_setting: i32) -> Self {
+    Amplifier {
+      program,
+      phase_setting,
+      input_value: VecDeque::from(vec![phase_setting]),
+      output_value: None,
     }
-    Multiply(mode_a, mode_b, mode_position) => {
-      let a = get_by_offset(mode_a, 1);
-      let b = get_by_offset(mode_b, 2);
-      let position = get_by_offset(mode_position, 3);
-      let output = result[a] * result[b];
-      result[position] = output;
-      interprete(result, index + 4, input_values)
-    }
-    Input(mode) => {
-      let position = get_by_offset(mode, 1);
-      result[position] = input_values
-        .pop_back()
-        .expect("Should have an input value left!");
-      interprete(result, index + 2, input_values)
-    }
-    Output(mode) => {
-      let position = get_by_offset(mode, 1);
-      let next_input = result[position];
-      input_values.push_back(next_input);
-      interprete(result, index + 2, input_values)
-    }
-    JumpIfTrue(mode_a, mode_b) => {
-      let test_non_zero = get_by_offset(mode_a, 1);
-      let next_index = get_by_offset(mode_b, 2);
-      if result[test_non_zero] != 0 {
-        interprete(result, result[next_index] as usize, input_values)
-      } else {
-        interprete(result, index + 3, input_values)
+  }
+  pub fn interprete(
+    self: &mut Amplifier,
+    result: &mut Vec<i32>,
+    index: usize,
+    input_values: &mut VecDeque<i32>,
+  ) -> Option<i32> {
+    use Command::*;
+    use Parameter::*;
+    let opcode = result[index];
+    let command = code_to_command(opcode);
+    let get_by_offset = |mode: Parameter, offset: i32| match mode {
+      Position => result[(index as i32 + offset) as usize] as usize,
+      Immediate => (index as i32 + offset) as usize,
+    };
+    match command {
+      Add(mode_a, mode_b, mode_position) => {
+        let a = get_by_offset(mode_a, 1);
+        let b = get_by_offset(mode_b, 2);
+        let position = get_by_offset(mode_position, 3);
+        let output = result[a] + result[b];
+        result[position] = output;
+        self.interprete(result, index + 4, input_values)
       }
-    }
-    JumpIfFalse(mode_a, mode_b) => {
-      let test_zero = get_by_offset(mode_a, 1);
-      let next_index = get_by_offset(mode_b, 2);
-      if result[test_zero] == 0 {
-        interprete(result, result[next_index] as usize, input_values)
-      } else {
-        interprete(result, index + 3, input_values)
+      Multiply(mode_a, mode_b, mode_position) => {
+        let a = get_by_offset(mode_a, 1);
+        let b = get_by_offset(mode_b, 2);
+        let position = get_by_offset(mode_position, 3);
+        let output = result[a] * result[b];
+        result[position] = output;
+        self.interprete(result, index + 4, input_values)
       }
-    }
-    LessThan(mode_a, mode_b, mode_position) => {
-      let a = get_by_offset(mode_a, 1);
-      let b = get_by_offset(mode_b, 2);
-      let position = get_by_offset(mode_position, 3);
-      if result[a] < result[b] {
-        result[position] = 1;
-      } else {
-        result[position] = 0;
+      Input(mode) => {
+        let position = get_by_offset(mode, 1);
+        result[position] = input_values
+          .pop_back()
+          .expect("Should have an input value left!");
+        self.interprete(result, index + 2, input_values)
       }
-      interprete(result, index + 4, input_values)
-    }
-    Equals(mode_a, mode_b, mode_position) => {
-      let a = get_by_offset(mode_a, 1);
-      let b = get_by_offset(mode_b, 2);
-      let position = get_by_offset(mode_position, 3);
-      if result[a] == result[b] {
-        result[position] = 1;
-      } else {
-        result[position] = 0;
+      Output(mode) => {
+        let position = get_by_offset(mode, 1);
+        let output_value = result[position];
+        self.output_value = Some(output_value);
+        self.interprete(result, index + 2, input_values)
       }
-      interprete(result, index + 4, input_values)
+      JumpIfTrue(mode_a, mode_b) => {
+        let test_non_zero = get_by_offset(mode_a, 1);
+        let next_index = get_by_offset(mode_b, 2);
+        if result[test_non_zero] != 0 {
+          self.interprete(result, result[next_index] as usize, input_values)
+        } else {
+          self.interprete(result, index + 3, input_values)
+        }
+      }
+      JumpIfFalse(mode_a, mode_b) => {
+        let test_zero = get_by_offset(mode_a, 1);
+        let next_index = get_by_offset(mode_b, 2);
+        if result[test_zero] == 0 {
+          self.interprete(result, result[next_index] as usize, input_values)
+        } else {
+          self.interprete(result, index + 3, input_values)
+        }
+      }
+      LessThan(mode_a, mode_b, mode_position) => {
+        let a = get_by_offset(mode_a, 1);
+        let b = get_by_offset(mode_b, 2);
+        let position = get_by_offset(mode_position, 3);
+        if result[a] < result[b] {
+          result[position] = 1;
+        } else {
+          result[position] = 0;
+        }
+        self.interprete(result, index + 4, input_values)
+      }
+      Equals(mode_a, mode_b, mode_position) => {
+        let a = get_by_offset(mode_a, 1);
+        let b = get_by_offset(mode_b, 2);
+        let position = get_by_offset(mode_position, 3);
+        if result[a] == result[b] {
+          result[position] = 1;
+        } else {
+          result[position] = 0;
+        }
+        self.interprete(result, index + 4, input_values)
+      }
+      End => self.output_value,
     }
-    End => input_values.front().cloned(),
+  }
+  pub fn calculate_output(&mut self, input_value: i32) -> Option<i32> {
+    self.input_value.push_front(input_value);
+    let result = computer_1202(&self.program, false, &mut self.input_value);
+    result.output
   }
 }
 
@@ -177,23 +211,33 @@ mod test {
 
     assert_eq!(
       1,
-      computer_1202(&input.to_owned(), false, &mut eq_eight).output
+      computer_1202(&input.to_owned(), false, &mut eq_eight)
+        .output
+        .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_1).output
+      computer_1202(&input.to_owned(), false, &mut not_eight_1)
+        .output
+        .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_2).output
+      computer_1202(&input.to_owned(), false, &mut not_eight_2)
+        .output
+        .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_3).output
+      computer_1202(&input.to_owned(), false, &mut not_eight_3)
+        .output
+        .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_4).output
+      computer_1202(&input.to_owned(), false, &mut not_eight_4)
+        .output
+        .expect("should have an output value")
     );
   }
   #[test]
@@ -204,15 +248,21 @@ mod test {
     let mut gt_eight = VecDeque::from(vec![9]);
     assert_eq!(
       999,
-      computer_1202(&input.to_owned(), false, &mut lt_eight).output
+      computer_1202(&input.to_owned(), false, &mut lt_eight)
+        .output
+        .expect("should have an output value")
     );
     assert_eq!(
       1000,
-      computer_1202(&input.to_owned(), false, &mut eq_eight).output
+      computer_1202(&input.to_owned(), false, &mut eq_eight)
+        .output
+        .expect("should have an output value")
     );
     assert_eq!(
       1001,
-      computer_1202(&input.to_owned(), false, &mut gt_eight).output
+      computer_1202(&input.to_owned(), false, &mut gt_eight)
+        .output
+        .expect("should have an output value")
     );
   }
   #[test]
@@ -222,14 +272,18 @@ mod test {
     let expected_output = 0;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter).output
+      computer_1202(&input.to_owned(), false, &mut input_parameter)
+        .output
+        .expect("should have an output value")
     );
 
     let mut input_parameter = VecDeque::from(vec![1]);
     let expected_output = 1;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter).output
+      computer_1202(&input.to_owned(), false, &mut input_parameter)
+        .output
+        .expect("should have an output value")
     )
   }
 
@@ -240,14 +294,18 @@ mod test {
     let expected_output = 0;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter).output
+      computer_1202(&input.to_owned(), false, &mut input_parameter)
+        .output
+        .expect("should have an output value")
     );
 
     let mut input_parameter = VecDeque::from(vec![1]);
     let expected_output = 1;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter).output
+      computer_1202(&input.to_owned(), false, &mut input_parameter)
+        .output
+        .expect("should have an output value")
     )
   }
 

@@ -1,4 +1,4 @@
-use crate::intcode_compute::{computer_1202, interprete};
+use crate::intcode_compute::{computer_1202, Amplifier};
 use std::collections::VecDeque;
 use std::fs;
 
@@ -20,7 +20,17 @@ pub fn program_1202_02() -> i32 {
       let mut result = input.clone();
       result[1] = noun;
       result[2] = verb;
-      interprete(&mut result, 0, &mut VecDeque::new());
+      let mut amplifier = Amplifier {
+        program: result
+          .iter()
+          .map(|x| format!("{}", x))
+          .collect::<Vec<String>>()
+          .join(","),
+        phase_setting: 0,
+        input_value: VecDeque::new(),
+        output_value: None,
+      };
+      amplifier.interprete(&mut result, 0, &mut VecDeque::new());
       if result[0] == 19690720 {
         return 100 * noun + verb;
       }

@@ -1,7 +1,7 @@
 extern crate itertools;
 use itertools::Itertools;
 
-use crate::intcode_compute::computer_1202;
+use crate::intcode_compute::{computer_1202, Amplifier};
 use std::collections::VecDeque;
 use std::fs;
 
@@ -26,7 +26,9 @@ fn find_maximum(amplifier_program: &String) -> i32 {
     let mut input_output_value = 0;
     for phase_setting in permutation.iter() {
       let mut amplifier = Amplifier::new(amplifier_program.clone(), *phase_setting as i32);
-      input_output_value = amplifier.calculate_output(input_output_value);
+      input_output_value = amplifier
+        .calculate_output(input_output_value)
+        .expect("should have an output value");
     }
     if maximum_output < input_output_value {
       maximum_output = input_output_value;
@@ -68,7 +70,10 @@ fn find_maximum_with_feedback_of_permutation(
     println!("in permutation {:?}", permutation);
     println!("feedback loop input: {}", input_output_value);
     for amplifier in amplifiers.iter_mut() {
-      input_output_value = amplifier.calculate_output(input_output_value);
+      amplifier.program = amplifier_program.clone();
+      input_output_value = amplifier
+        .calculate_output(input_output_value)
+        .expect("should have an output value");
       println!("amplifier output: {}", input_output_value);
     }
     if max_of_permutation < input_output_value {
@@ -79,29 +84,7 @@ fn find_maximum_with_feedback_of_permutation(
   max_of_permutation
 }
 
-#[derive(Clone, Debug)]
-struct Amplifier {
-  program: String,
-  phase_setting: i32,
-  input_value: VecDeque<i32>,
-}
-
-impl Amplifier {
-  pub fn new(program: String, phase_setting: i32) -> Self {
-    Amplifier {
-      program,
-      phase_setting,
-      input_value: VecDeque::from(vec![phase_setting]),
-    }
-  }
-  fn calculate_output(&mut self, input_value: i32) -> i32 {
-    self.input_value.push_front(input_value);
-    let result = computer_1202(&self.program, false, &mut self.input_value);
-    result.output
-  }
-}
-
-// #[cfg(test)]
+#[cfg(test)]
 pub mod test {
   use super::*;
 
@@ -154,8 +137,12 @@ pub mod test {
     let program = "3,16,3,15,2,15,16,15,1,15,16,17,4,17,99,-1,-1,-1".to_owned();
     let mut amplifier1 = Amplifier::new(program.to_owned(), 0);
     let mut amplifier2 = Amplifier::new(program.to_owned(), 1);
-    let result_1_2 = amplifier2.calculate_output(amplifier1.calculate_output(2));
-    assert_eq!(1, result_1_2);
+    let result_1_2 = amplifier2.calculate_output(
+      amplifier1
+        .calculate_output(2)
+        .expect("should have an output value"),
+    );
+    assert_eq!(1, result_1_2.expect("should have an output value"));
   }
 
   #[test]
@@ -163,14 +150,18 @@ pub mod test {
     let program = "3,16,3,15,2,15,16,15,1,15,16,17,4,17,99,-1,-1,-1".to_owned();
     let mut amplifier1 = Amplifier::new(program.to_owned(), 0);
     let mut amplifier2 = Amplifier::new(program.to_owned(), 1);
-    let result_2_1 = amplifier1.calculate_output(amplifier2.calculate_output(2));
-    assert_eq!(0, result_2_1);
+    let result_2_1 = amplifier1.calculate_output(
+      amplifier2
+        .calculate_output(2)
+        .expect("should have an output value"),
+    );
+    assert_eq!(0, result_2_1.expect("should have an output value"));
   }
 
   #[test]
   fn multiple_input_values() {
     let mut amplifier = Amplifier::new("3,11,3,12,1,11,12,13,4,13,99,-1,-1,-1".to_owned(), 1);
     let result = amplifier.calculate_output(2);
-    assert_eq!(3, result);
+    assert_eq!(3, result.expect("should have an output value"));
   }
 }

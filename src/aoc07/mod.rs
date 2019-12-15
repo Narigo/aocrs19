@@ -1,8 +1,7 @@
 extern crate itertools;
 use itertools::Itertools;
 
-use crate::intcode_compute::{computer_1202, Amplifier};
-use std::collections::VecDeque;
+use crate::intcode_compute::Amplifier;
 use std::fs;
 
 pub fn program_1207_01() -> i32 {
@@ -67,19 +66,14 @@ fn find_maximum_with_feedback_of_permutation(
 
   while last_input_output_value < input_output_value {
     last_input_output_value = input_output_value;
-    println!("in permutation {:?}", permutation);
-    println!("feedback loop input: {}", input_output_value);
     for amplifier in amplifiers.iter_mut() {
-      amplifier.program = amplifier_program.clone();
       input_output_value = amplifier
         .calculate_output(input_output_value)
         .expect("should have an output value");
-      println!("amplifier output: {}", input_output_value);
     }
     if max_of_permutation < input_output_value {
       max_of_permutation = input_output_value;
     }
-    println!("max_of_permutation: {}", max_of_permutation);
   }
   max_of_permutation
 }
@@ -98,7 +92,7 @@ pub mod test {
     assert_eq!(expected, result);
   }
 
-  // #[test]
+  #[test]
   pub fn example_amplifier_2_feedback_looped() {
     let program =
       "3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10";

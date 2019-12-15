@@ -26,8 +26,8 @@ pub fn program_1202_02() -> i32 {
         .collect::<Vec<String>>()
         .join(",");
       let mut amplifier = Amplifier::new(program, None);
-      amplifier.interprete(&mut result, 0, &mut VecDeque::new());
-      if result[0] == 19690720 {
+      amplifier.interprete();
+      if amplifier.program[0] == 19690720 {
         return 100 * noun + verb;
       }
     }

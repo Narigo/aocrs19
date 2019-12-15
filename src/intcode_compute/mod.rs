@@ -19,27 +19,26 @@ pub fn computer_1202(
     result[1] = 12;
     result[2] = 2;
   }
-  let mut amplifier = Amplifier {
-    program: result
-      .iter()
-      .map(|x| format!("{}", x))
-      .collect::<Vec<String>>()
-      .join(","),
-    phase_setting: None,
-    input_value: input_values.clone(),
-    output_value: None,
-  };
-  let output = amplifier.interprete(&mut result, 0, input_values);
+  let program = result
+    .iter()
+    .map(|x| format!("{}", x))
+    .collect::<Vec<String>>()
+    .join(",");
+  let mut amplifier = Amplifier::new(program, None);
+  amplifier.input_value = input_values.clone();
+
+  let output = amplifier.interprete();
   ComputationResult {
-    state: result,
-    output: output,
+    state: amplifier.program,
+    output,
   }
 }
 
 #[derive(Clone, Debug)]
 pub struct Amplifier {
-  pub program: String,
   pub phase_setting: Option<i32>,
+  pub program: Vec<i32>,
+  pub index: usize,
   pub input_value: VecDeque<i32>,
   pub output_value: Option<i32>,
 }
@@ -47,103 +46,237 @@ pub struct Amplifier {
 impl Amplifier {
   pub fn new(program: String, phase_setting: Option<i32>) -> Self {
     Amplifier {
-      program,
       phase_setting,
+      program: program
+        .split(",")
+        .map(|n| n.parse::<i32>().unwrap())
+        .collect::<Vec<i32>>(),
+      index: 0,
       input_value: VecDeque::from(phase_setting.into_iter().collect::<Vec<i32>>()),
       output_value: None,
     }
   }
-  pub fn interprete(
-    self: &mut Amplifier,
-    result: &mut Vec<i32>,
-    index: usize,
-    input_values: &mut VecDeque<i32>,
-  ) -> Option<i32> {
+  pub fn interprete(self: &mut Amplifier) -> Option<i32> {
     use Command::*;
     use Parameter::*;
-    let opcode = result[index];
+    let debug = false;
+    let opcode = self.program[self.index];
     let command = code_to_command(opcode);
-    let get_by_offset = |mode: Parameter, offset: i32| match mode {
-      Position => result[(index as i32 + offset) as usize] as usize,
-      Immediate => (index as i32 + offset) as usize,
+    let get_by_offset = |mode: &Parameter, offset: i32| match mode {
+      Position => self.program[(self.index as i32 + offset) as usize] as usize,
+      Immediate => (self.index as i32 + offset) as usize,
     };
     match command {
       Add(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(mode_a, 1);
-        let b = get_by_offset(mode_b, 2);
-        let position = get_by_offset(mode_position, 3);
-        let output = result[a] + result[b];
-        result[position] = output;
-        self.interprete(result, index + 4, input_values)
+        let a = get_by_offset(&mode_a, 1);
+        let b = get_by_offset(&mode_b, 2);
+        let position = get_by_offset(&mode_position, 3);
+        let output = self.program[a] + self.program[b];
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      ADD {} + {} (={}) => {:4}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            self.program[self.index + 2],
+            self.program[self.index + 3],
+            self.program[a],
+            self.program[b],
+            output,
+            position
+          );
+        }
+        self.program[position] = output;
+        self.index = self.index + 4;
+        self.interprete()
       }
       Multiply(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(mode_a, 1);
-        let b = get_by_offset(mode_b, 2);
-        let position = get_by_offset(mode_position, 3);
-        let output = result[a] * result[b];
-        result[position] = output;
-        self.interprete(result, index + 4, input_values)
+        let a = get_by_offset(&mode_a, 1);
+        let b = get_by_offset(&mode_b, 2);
+        let position = get_by_offset(&mode_position, 3);
+        let output = self.program[a] * self.program[b];
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | MULTIPLY {} * {} (={}) => {:4}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            self.program[self.index + 2],
+            self.program[self.index + 3],
+            self.program[a],
+            self.program[b],
+            output,
+            position,
+          );
+        }
+        self.program[position] = output;
+        self.index = self.index + 4;
+        self.interprete()
       }
       Input(mode) => {
-        let position = get_by_offset(mode, 1);
-        result[position] = input_values
-          .pop_back()
-          .expect("Should have an input value left!");
-        self.interprete(result, index + 2, input_values)
+        let position = get_by_offset(&mode, 1);
+        let input = self.input_value.pop_back();
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |    INPUT {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            " ",
+            " ",
+            position,
+            input
+          );
+        }
+        if input.is_some() {
+          self.program[position] = input.expect("Should have an input value left!");
+          self.index = self.index + 2;
+          self.interprete()
+        } else {
+          self.output_value
+        }
       }
       Output(mode) => {
-        let position = get_by_offset(mode, 1);
-        let output_value = result[position];
+        let position = get_by_offset(&mode, 1);
+        let output_value = self.program[position];
         self.output_value = Some(output_value);
-        self.interprete(result, index + 2, input_values)
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            " ",
+            " ",
+            position,
+            output_value
+          );
+        }
+        self.index = self.index + 2;
+        self.interprete()
       }
       JumpIfTrue(mode_a, mode_b) => {
-        let test_non_zero = get_by_offset(mode_a, 1);
-        let next_index = get_by_offset(mode_b, 2);
-        if result[test_non_zero] != 0 {
-          self.interprete(result, result[next_index] as usize, input_values)
+        let test_non_zero = get_by_offset(&mode_a, 1);
+        let next_index = get_by_offset(&mode_b, 2);
+        let next_position = if self.program[test_non_zero] != 0 {
+          self.program[next_index] as usize
         } else {
-          self.interprete(result, index + 3, input_values)
+          self.index + 3
+        };
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |  JMPTRUE {:4} {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            self.program[self.index + 2],
+            self.program[self.index + 3],
+            test_non_zero,
+            next_index,
+            next_position
+          );
         }
+        self.index = next_position;
+        self.interprete()
       }
       JumpIfFalse(mode_a, mode_b) => {
-        let test_zero = get_by_offset(mode_a, 1);
-        let next_index = get_by_offset(mode_b, 2);
-        if result[test_zero] == 0 {
-          self.interprete(result, result[next_index] as usize, input_values)
+        let test_zero = get_by_offset(&mode_a, 1);
+        let next_index = get_by_offset(&mode_b, 2);
+        let next_position = if self.program[test_zero] == 0 {
+          self.program[next_index] as usize
         } else {
-          self.interprete(result, index + 3, input_values)
+          self.index + 3
+        };
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | JMPFALSE {:4} {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            self.program[self.index + 2],
+            self.program[self.index + 3],
+            test_zero,
+            next_index,
+            next_position
+          );
         }
+        self.index = next_position;
+        self.interprete()
       }
       LessThan(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(mode_a, 1);
-        let b = get_by_offset(mode_b, 2);
-        let position = get_by_offset(mode_position, 3);
-        if result[a] < result[b] {
-          result[position] = 1;
+        let a = get_by_offset(&mode_a, 1);
+        let b = get_by_offset(&mode_b, 2);
+        let position = get_by_offset(&mode_position, 3);
+        let value_to_store = if self.program[a] < self.program[b] {
+          1
         } else {
-          result[position] = 0;
+          0
+        };
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | LESSTHAN {:4} {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            self.program[self.index + 2],
+            self.program[self.index + 3],
+            a,
+            b,
+            value_to_store
+          );
         }
-        self.interprete(result, index + 4, input_values)
+        self.program[position] = value_to_store;
+        self.index = self.index + 4;
+        self.interprete()
       }
       Equals(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(mode_a, 1);
-        let b = get_by_offset(mode_b, 2);
-        let position = get_by_offset(mode_position, 3);
-        if result[a] == result[b] {
-          result[position] = 1;
+        let a = get_by_offset(&mode_a, 1);
+        let b = get_by_offset(&mode_b, 2);
+        let position = get_by_offset(&mode_position, 3);
+        let value_to_store = if self.program[a] == self.program[b] {
+          1
         } else {
-          result[position] = 0;
+          0
+        };
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   EQUALS {:4} {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.program[self.index + 1],
+            self.program[self.index + 2],
+            self.program[self.index + 3],
+            a,
+            b,
+            value_to_store
+          );
         }
-        self.interprete(result, index + 4, input_values)
+        self.program[position] = value_to_store;
+        self.index = self.index + 4;
+        self.interprete()
       }
-      End => self.output_value,
+      End => {
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      END",
+            self.phase_setting, self.index, opcode, " ", " ", " ",
+          );
+        }
+        self.output_value
+      }
     }
   }
   pub fn calculate_output(&mut self, input_value: i32) -> Option<i32> {
     self.input_value.push_front(input_value);
-    let result = computer_1202(&self.program, false, &mut self.input_value);
-    result.output
+    self.interprete()
   }
 }
 

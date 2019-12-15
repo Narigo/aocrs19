@@ -25,7 +25,7 @@ fn find_maximum(amplifier_program: &String) -> i32 {
   for permutation in permutations {
     let mut input_output_value = 0;
     for phase_setting in permutation.iter() {
-      let mut amplifier = Amplifier::new(amplifier_program.clone(), *phase_setting as i32);
+      let mut amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i32));
       input_output_value = amplifier
         .calculate_output(input_output_value)
         .expect("should have an output value");
@@ -61,7 +61,7 @@ fn find_maximum_with_feedback_of_permutation(
 
   let mut amplifiers = Vec::new();
   for phase_setting in permutation.iter() {
-    let amplifier = Amplifier::new(amplifier_program.clone(), *phase_setting as i32);
+    let amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i32));
     amplifiers.push(amplifier);
   }
 
@@ -135,8 +135,8 @@ pub mod test {
   #[test]
   fn two_amplifiers_1_to_2() {
     let program = "3,16,3,15,2,15,16,15,1,15,16,17,4,17,99,-1,-1,-1".to_owned();
-    let mut amplifier1 = Amplifier::new(program.to_owned(), 0);
-    let mut amplifier2 = Amplifier::new(program.to_owned(), 1);
+    let mut amplifier1 = Amplifier::new(program.to_owned(), Some(0));
+    let mut amplifier2 = Amplifier::new(program.to_owned(), Some(1));
     let result_1_2 = amplifier2.calculate_output(
       amplifier1
         .calculate_output(2)
@@ -148,8 +148,8 @@ pub mod test {
   #[test]
   fn two_amplifiers_2_to_1() {
     let program = "3,16,3,15,2,15,16,15,1,15,16,17,4,17,99,-1,-1,-1".to_owned();
-    let mut amplifier1 = Amplifier::new(program.to_owned(), 0);
-    let mut amplifier2 = Amplifier::new(program.to_owned(), 1);
+    let mut amplifier1 = Amplifier::new(program.to_owned(), Some(0));
+    let mut amplifier2 = Amplifier::new(program.to_owned(), Some(1));
     let result_2_1 = amplifier1.calculate_output(
       amplifier2
         .calculate_output(2)
@@ -160,7 +160,7 @@ pub mod test {
 
   #[test]
   fn multiple_input_values() {
-    let mut amplifier = Amplifier::new("3,11,3,12,1,11,12,13,4,13,99,-1,-1,-1".to_owned(), 1);
+    let mut amplifier = Amplifier::new("3,11,3,12,1,11,12,13,4,13,99,-1,-1,-1".to_owned(), Some(1));
     let result = amplifier.calculate_output(2);
     assert_eq!(3, result.expect("should have an output value"));
   }

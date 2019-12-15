@@ -25,7 +25,7 @@ pub fn computer_1202(
       .map(|x| format!("{}", x))
       .collect::<Vec<String>>()
       .join(","),
-    phase_setting: 0,
+    phase_setting: None,
     input_value: input_values.clone(),
     output_value: None,
   };
@@ -39,17 +39,17 @@ pub fn computer_1202(
 #[derive(Clone, Debug)]
 pub struct Amplifier {
   pub program: String,
-  pub phase_setting: i32,
+  pub phase_setting: Option<i32>,
   pub input_value: VecDeque<i32>,
   pub output_value: Option<i32>,
 }
 
 impl Amplifier {
-  pub fn new(program: String, phase_setting: i32) -> Self {
+  pub fn new(program: String, phase_setting: Option<i32>) -> Self {
     Amplifier {
       program,
       phase_setting,
-      input_value: VecDeque::from(vec![phase_setting]),
+      input_value: VecDeque::from(phase_setting.into_iter().collect::<Vec<i32>>()),
       output_value: None,
     }
   }

@@ -20,16 +20,12 @@ pub fn program_1202_02() -> i32 {
       let mut result = input.clone();
       result[1] = noun;
       result[2] = verb;
-      let mut amplifier = Amplifier {
-        program: result
-          .iter()
-          .map(|x| format!("{}", x))
-          .collect::<Vec<String>>()
-          .join(","),
-        phase_setting: 0,
-        input_value: VecDeque::new(),
-        output_value: None,
-      };
+      let program = result
+        .iter()
+        .map(|x| format!("{}", x))
+        .collect::<Vec<String>>()
+        .join(",");
+      let mut amplifier = Amplifier::new(program, None);
       amplifier.interprete(&mut result, 0, &mut VecDeque::new());
       if result[0] == 19690720 {
         return 100 * noun + verb;

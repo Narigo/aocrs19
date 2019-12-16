@@ -5,6 +5,7 @@ mod aoc04;
 mod aoc05;
 mod aoc06;
 mod aoc07;
+mod aoc08;
 mod intcode_compute;
 
 fn main() {
@@ -23,5 +24,6 @@ fn main() {
     println!("aoc06_02 = {}", aoc06::orbit_transfers());
     println!("aoc07_01 = {}", aoc07::program_1207_01());
     println!("aoc07_02 = {}", aoc07::program_1207_02());
+    println!("aoc08_01 = {}", aoc08::space_image_format());
     // aoc07::test::example_amplifier_2_feedback_looped();
 }

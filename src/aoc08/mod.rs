@@ -16,6 +16,13 @@ pub fn space_image_format() -> u32 {
   image.checksum()
 }
 
+pub fn draw_image() -> String {
+  let filename = "./src/aoc08/input.txt";
+  let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
+  let image = Image::new(6, 25, &contents);
+  image.draw()
+}
+
 struct Image {
   dimensions: (Height, Width),
   layers: Vec<Layer>,
@@ -25,9 +32,6 @@ impl Image {
   pub fn new(height: Height, width: Width, input: &String) -> Image {
     let length = input.len();
     let expected_length: usize = (height * width) as usize;
-    println!("{}", input);
-    println!("length: {}", length);
-    println!("expected_length: {}", expected_length);
     assert_eq!(0, length % expected_length);
     let mut layers = Vec::new();
     let mut layer_number: usize = 0;
@@ -86,6 +90,31 @@ impl Image {
         }
     });
     one_digits * two_digits
+  }
+  fn find_color_in_layers_at(self: &Image, index: usize) -> &'static str {
+    for (_, pixels) in self.layers.iter() {
+      match pixels[index] {
+        0 => return " ",
+        1 => return "#",
+        _ => continue,
+      }
+    }
+    return "X";
+  }
+  fn draw(self: &Image) -> String {
+    let length = self.layers[0].1.len() + self.dimensions.0 as usize;
+    let mut result: Vec<&'static str> = Vec::with_capacity(length);
+    let mut index: usize = 0;
+    for num in self.layers[0].1.iter() {
+      print!("{}", num);
+      result.push(self.find_color_in_layers_at(index));
+      index = index + 1;
+      if (index % self.dimensions.1 as usize) == 0 {
+        print!("\n");
+        result.push("\n");
+      }
+    }
+    result.iter().map(|s| s.to_owned()).collect()
   }
 }
 

@@ -25,5 +25,5 @@ fn main() {
     println!("aoc07_01 = {}", aoc07::program_1207_01());
     println!("aoc07_02 = {}", aoc07::program_1207_02());
     println!("aoc08_01 = {}", aoc08::space_image_format());
-    // aoc07::test::example_amplifier_2_feedback_looped();
+    println!("aoc08_02 =\n{}", aoc08::draw_image());
 }

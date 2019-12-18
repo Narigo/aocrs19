@@ -1,19 +1,19 @@
 use std::collections::VecDeque;
 
 pub struct ComputationResult {
-  pub state: Vec<i32>,
-  pub output: Option<i32>,
+  pub state: Vec<i64>,
+  pub output: Option<i64>,
 }
 
 pub fn computer_1202(
   program: &String,
   fix_data: bool,
-  input_values: &mut VecDeque<i32>,
+  input_values: &mut VecDeque<i64>,
 ) -> ComputationResult {
   let input = program
     .split(",")
-    .map(|n| n.parse::<i32>().unwrap())
-    .collect::<Vec<i32>>();
+    .map(|n| n.parse::<i64>().unwrap())
+    .collect::<Vec<i64>>();
   let mut result = input.clone();
   if fix_data {
     result[1] = 12;
@@ -36,35 +36,35 @@ pub fn computer_1202(
 
 #[derive(Clone, Debug)]
 pub struct Amplifier {
-  pub phase_setting: Option<i32>,
-  pub program: Vec<i32>,
+  pub phase_setting: Option<i64>,
+  pub program: Vec<i64>,
   pub index: usize,
-  pub input_value: VecDeque<i32>,
-  pub output_value: Option<i32>,
+  pub input_value: VecDeque<i64>,
+  pub output_value: Option<i64>,
 }
 
 impl Amplifier {
-  pub fn new(program: String, phase_setting: Option<i32>) -> Self {
+  pub fn new(program: String, phase_setting: Option<i64>) -> Self {
     Amplifier {
       phase_setting,
       program: program
         .split(",")
-        .map(|n| n.parse::<i32>().unwrap())
-        .collect::<Vec<i32>>(),
+        .map(|n| n.parse::<i64>().unwrap())
+        .collect::<Vec<i64>>(),
       index: 0,
-      input_value: VecDeque::from(phase_setting.into_iter().collect::<Vec<i32>>()),
+      input_value: VecDeque::from(phase_setting.into_iter().collect::<Vec<i64>>()),
       output_value: None,
     }
   }
-  pub fn interprete(self: &mut Amplifier) -> Option<i32> {
+  pub fn interprete(self: &mut Amplifier) -> Option<i64> {
     use Command::*;
     use Parameter::*;
     let debug = false;
     let opcode = self.program[self.index];
     let command = code_to_command(opcode);
-    let get_by_offset = |mode: &Parameter, offset: i32| match mode {
-      Position => self.program[(self.index as i32 + offset) as usize] as usize,
-      Immediate => (self.index as i32 + offset) as usize,
+    let get_by_offset = |mode: &Parameter, offset: i64| match mode {
+      Position => self.program[(self.index as i64 + offset) as usize] as usize,
+      Immediate => (self.index as i64 + offset) as usize,
     };
     match command {
       Add(mode_a, mode_b, mode_position) => {
@@ -263,6 +263,11 @@ impl Amplifier {
         self.index = self.index + 4;
         self.interprete()
       }
+      RelativeBaseOffset(mode) => {
+        let a = get_by_offset(&mode, 1);
+        self.index = self.index + 2;
+        self.interprete()
+      }
       End => {
         if debug {
           println!(
@@ -274,7 +279,7 @@ impl Amplifier {
       }
     }
   }
-  pub fn calculate_output(&mut self, input_value: i32) -> Option<i32> {
+  pub fn calculate_output(&mut self, input_value: i64) -> Option<i64> {
     self.input_value.push_front(input_value);
     self.interprete()
   }
@@ -295,16 +300,17 @@ enum Command {
   JumpIfFalse(Parameter, Parameter),
   LessThan(Parameter, Parameter, Parameter),
   Equals(Parameter, Parameter, Parameter),
+  RelativeBaseOffset(Parameter),
   End,
 }
 
-fn code_to_command(opcode: i32) -> Command {
+fn code_to_command(opcode: i64) -> Command {
   use Command::*;
   use Parameter::*;
 
   let operation = opcode % 100;
   let retrieve_param = |n: u32| {
-    let mode = (opcode / (10 as i32).pow(n + 1)) % 10;
+    let mode = (opcode / (10 as i64).pow(n + 1)) % 10;
     if mode == 0 {
       Position
     } else {
@@ -320,6 +326,7 @@ fn code_to_command(opcode: i32) -> Command {
     6 => JumpIfFalse(retrieve_param(1), retrieve_param(2)),
     7 => LessThan(retrieve_param(1), retrieve_param(2), retrieve_param(3)),
     8 => Equals(retrieve_param(1), retrieve_param(2), retrieve_param(3)),
+    9 => RelativeBaseOffset(retrieve_param(1)),
     99 => End,
     _ => {
       println!("Looked at opcode {}", opcode);
@@ -332,6 +339,26 @@ fn code_to_command(opcode: i32) -> Command {
 mod test {
   use super::computer_1202;
   use std::collections::VecDeque;
+
+  #[test]
+  fn relative_base_offset_bigger_memory() {
+    let input = "104,1125899906842624,99";
+    let expected_output = Some(1125899906842624);
+    assert_eq!(
+      expected_output,
+      computer_1202(&input.to_owned(), false, &mut VecDeque::new()).output
+    );
+  }
+
+  #[test]
+  fn relative_base_offset_16_digit_number() {
+    let input = "1102,34915192,34915192,7,4,7,99,0";
+    let result = computer_1202(&input.to_owned(), false, &mut VecDeque::new());
+    assert_eq!(
+      16,
+      format!("{}", result.output.expect("expected an output value")).len()
+    );
+  }
 
   #[test]
   fn equal_to_8() {

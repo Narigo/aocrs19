@@ -4,27 +4,27 @@ use itertools::Itertools;
 use crate::intcode_compute::Amplifier;
 use std::fs;
 
-pub fn program_1207_01() -> i32 {
+pub fn program_1207_01() -> i64 {
   let filename = "./src/aoc07/input.txt";
   let amplifier_program =
     fs::read_to_string(filename).expect("Something went wrong reading the file");
   find_maximum(&amplifier_program)
 }
 
-pub fn program_1207_02() -> i32 {
+pub fn program_1207_02() -> i64 {
   let filename = "./src/aoc07/input.txt";
   let amplifier_program =
     fs::read_to_string(filename).expect("Something went wrong reading the file");
   find_maximum_with_feedback(&amplifier_program)
 }
 
-fn find_maximum(amplifier_program: &String) -> i32 {
+fn find_maximum(amplifier_program: &String) -> i64 {
   let permutations = (0..5).permutations(5);
-  let mut maximum_output = std::i32::MIN;
+  let mut maximum_output = std::i64::MIN;
   for permutation in permutations {
     let mut input_output_value = 0;
     for phase_setting in permutation.iter() {
-      let mut amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i32));
+      let mut amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i64));
       input_output_value = amplifier
         .calculate_output(input_output_value)
         .expect("should have an output value");
@@ -36,9 +36,9 @@ fn find_maximum(amplifier_program: &String) -> i32 {
   maximum_output
 }
 
-fn find_maximum_with_feedback(amplifier_program: &String) -> i32 {
+fn find_maximum_with_feedback(amplifier_program: &String) -> i64 {
   let permutations = (5..10).permutations(5);
-  let mut maximum_output = std::i32::MIN;
+  let mut maximum_output = std::i64::MIN;
   for permutation in permutations {
     let max_of_permutation =
       find_maximum_with_feedback_of_permutation(amplifier_program, permutation);
@@ -52,15 +52,15 @@ fn find_maximum_with_feedback(amplifier_program: &String) -> i32 {
 
 fn find_maximum_with_feedback_of_permutation(
   amplifier_program: &String,
-  permutation: Vec<i32>,
-) -> i32 {
-  let mut max_of_permutation = std::i32::MIN;
-  let mut last_input_output_value = std::i32::MIN;
+  permutation: Vec<i64>,
+) -> i64 {
+  let mut max_of_permutation = std::i64::MIN;
+  let mut last_input_output_value = std::i64::MIN;
   let mut input_output_value = 0;
 
   let mut amplifiers = Vec::new();
   for phase_setting in permutation.iter() {
-    let amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i32));
+    let amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i64));
     amplifiers.push(amplifier);
   }
 

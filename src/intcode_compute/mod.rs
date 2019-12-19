@@ -40,6 +40,7 @@ pub struct Amplifier {
   pub program: Vec<i64>,
   pub index: usize,
   pub input_value: VecDeque<i64>,
+  offset_base: i64,
   pub output_value: Option<i64>,
 }
 
@@ -53,8 +54,22 @@ impl Amplifier {
         .collect::<Vec<i64>>(),
       index: 0,
       input_value: VecDeque::from(phase_setting.into_iter().collect::<Vec<i64>>()),
+      offset_base: 0,
       output_value: None,
     }
+  }
+  fn get_data_at(self: &Amplifier, index: usize) -> i64 {
+    if self.program.len() <= index {
+      0
+    } else {
+      self.program[index]
+    }
+  }
+  fn store_data_at(self: &mut Amplifier, index: usize, value: i64) {
+    if self.program.len() <= index {
+      self.program.resize(index + 1, 0);
+    }
+    self.program[index] = value;
   }
   pub fn interprete(self: &mut Amplifier) -> Option<i64> {
     use Command::*;
@@ -63,31 +78,32 @@ impl Amplifier {
     let opcode = self.program[self.index];
     let command = code_to_command(opcode);
     let get_by_offset = |mode: &Parameter, offset: i64| match mode {
-      Position => self.program[(self.index as i64 + offset) as usize] as usize,
+      Position => self.get_data_at((self.index as i64 + offset) as usize) as usize,
       Immediate => (self.index as i64 + offset) as usize,
+      Relative => (self.offset_base + offset) as usize,
     };
     match command {
       Add(mode_a, mode_b, mode_position) => {
         let a = get_by_offset(&mode_a, 1);
         let b = get_by_offset(&mode_b, 2);
         let position = get_by_offset(&mode_position, 3);
-        let output = self.program[a] + self.program[b];
+        let output = self.get_data_at(a) + self.get_data_at(b);
         if debug {
           println!(
             "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      ADD {} + {} (={}) => {:4}",
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
-            self.program[self.index + 2],
-            self.program[self.index + 3],
-            self.program[a],
-            self.program[b],
+            self.get_data_at(self.index + 1),
+            self.get_data_at(self.index + 2),
+            self.get_data_at(self.index + 3),
+            self.get_data_at(a),
+            self.get_data_at(b),
             output,
             position
           );
         }
-        self.program[position] = output;
+        self.store_data_at(position, output);
         self.index = self.index + 4;
         self.interprete()
       }
@@ -95,23 +111,23 @@ impl Amplifier {
         let a = get_by_offset(&mode_a, 1);
         let b = get_by_offset(&mode_b, 2);
         let position = get_by_offset(&mode_position, 3);
-        let output = self.program[a] * self.program[b];
+        let output = self.get_data_at(a) * self.get_data_at(b);
         if debug {
           println!(
             "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | MULTIPLY {} * {} (={}) => {:4}",
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
-            self.program[self.index + 2],
-            self.program[self.index + 3],
-            self.program[a],
-            self.program[b],
+            self.get_data_at(self.index + 1),
+            self.get_data_at(self.index + 2),
+            self.get_data_at(self.index + 3),
+            self.get_data_at(a),
+            self.get_data_at(b),
             output,
             position,
           );
         }
-        self.program[position] = output;
+        self.store_data_at(position, output);
         self.index = self.index + 4;
         self.interprete()
       }
@@ -124,7 +140,7 @@ impl Amplifier {
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
+            self.get_data_at(self.index + 1),
             " ",
             " ",
             position,
@@ -132,7 +148,7 @@ impl Amplifier {
           );
         }
         if input.is_some() {
-          self.program[position] = input.expect("Should have an input value left!");
+          self.store_data_at(position, input.expect("Should have an input value left!"));
           self.index = self.index + 2;
           self.interprete()
         } else {
@@ -141,15 +157,16 @@ impl Amplifier {
       }
       Output(mode) => {
         let position = get_by_offset(&mode, 1);
-        let output_value = self.program[position];
+        let output_value = self.get_data_at(position);
         self.output_value = Some(output_value);
+        println!("OUT: {}", output_value);
         if debug {
           println!(
             "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?}",
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
+            self.get_data_at(self.index + 1),
             " ",
             " ",
             position,
@@ -162,8 +179,8 @@ impl Amplifier {
       JumpIfTrue(mode_a, mode_b) => {
         let test_non_zero = get_by_offset(&mode_a, 1);
         let next_index = get_by_offset(&mode_b, 2);
-        let next_position = if self.program[test_non_zero] != 0 {
-          self.program[next_index] as usize
+        let next_position = if self.get_data_at(test_non_zero) != 0 {
+          self.get_data_at(next_index) as usize
         } else {
           self.index + 3
         };
@@ -173,9 +190,9 @@ impl Amplifier {
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
-            self.program[self.index + 2],
-            self.program[self.index + 3],
+            self.get_data_at(self.index + 1),
+            self.get_data_at(self.index + 2),
+            self.get_data_at(self.index + 3),
             test_non_zero,
             next_index,
             next_position
@@ -187,8 +204,8 @@ impl Amplifier {
       JumpIfFalse(mode_a, mode_b) => {
         let test_zero = get_by_offset(&mode_a, 1);
         let next_index = get_by_offset(&mode_b, 2);
-        let next_position = if self.program[test_zero] == 0 {
-          self.program[next_index] as usize
+        let next_position = if self.get_data_at(test_zero) == 0 {
+          self.get_data_at(next_index) as usize
         } else {
           self.index + 3
         };
@@ -198,9 +215,9 @@ impl Amplifier {
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
-            self.program[self.index + 2],
-            self.program[self.index + 3],
+            self.get_data_at(self.index + 1),
+            self.get_data_at(self.index + 2),
+            self.get_data_at(self.index + 3),
             test_zero,
             next_index,
             next_position
@@ -213,7 +230,7 @@ impl Amplifier {
         let a = get_by_offset(&mode_a, 1);
         let b = get_by_offset(&mode_b, 2);
         let position = get_by_offset(&mode_position, 3);
-        let value_to_store = if self.program[a] < self.program[b] {
+        let value_to_store = if self.get_data_at(a) < self.get_data_at(b) {
           1
         } else {
           0
@@ -224,15 +241,15 @@ impl Amplifier {
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
-            self.program[self.index + 2],
-            self.program[self.index + 3],
+            self.get_data_at(self.index + 1),
+            self.get_data_at(self.index + 2),
+            self.get_data_at(self.index + 3),
             a,
             b,
             value_to_store
           );
         }
-        self.program[position] = value_to_store;
+        self.store_data_at(position, value_to_store);
         self.index = self.index + 4;
         self.interprete()
       }
@@ -240,7 +257,7 @@ impl Amplifier {
         let a = get_by_offset(&mode_a, 1);
         let b = get_by_offset(&mode_b, 2);
         let position = get_by_offset(&mode_position, 3);
-        let value_to_store = if self.program[a] == self.program[b] {
+        let value_to_store = if self.get_data_at(a) == self.get_data_at(b) {
           1
         } else {
           0
@@ -251,20 +268,21 @@ impl Amplifier {
             self.phase_setting,
             self.index,
             opcode,
-            self.program[self.index + 1],
-            self.program[self.index + 2],
-            self.program[self.index + 3],
+            self.get_data_at(self.index + 1),
+            self.get_data_at(self.index + 2),
+            self.get_data_at(self.index + 3),
             a,
             b,
             value_to_store
           );
         }
-        self.program[position] = value_to_store;
+        self.store_data_at(position, value_to_store);
         self.index = self.index + 4;
         self.interprete()
       }
       RelativeBaseOffset(mode) => {
-        let a = get_by_offset(&mode, 1);
+        let offset_base = get_by_offset(&mode, 1);
+        self.offset_base = offset_base as i64;
         self.index = self.index + 2;
         self.interprete()
       }
@@ -289,6 +307,7 @@ impl Amplifier {
 enum Parameter {
   Immediate,
   Position,
+  Relative,
 }
 
 enum Command {
@@ -313,8 +332,10 @@ fn code_to_command(opcode: i64) -> Command {
     let mode = (opcode / (10 as i64).pow(n + 1)) % 10;
     if mode == 0 {
       Position
-    } else {
+    } else if mode == 1 {
       Immediate
+    } else {
+      Relative
     }
   };
   match operation {
@@ -358,6 +379,13 @@ mod test {
       16,
       format!("{}", result.output.expect("expected an output value")).len()
     );
+  }
+  #[test]
+  fn relative_base_offset_quine() {
+    let input = "109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99";
+    let result = computer_1202(&input.to_owned(), false, &mut VecDeque::new());
+    assert_eq!(204, result.output.expect("should have an output"));
+    assert_eq!(true, false);
   }
 
   #[test]

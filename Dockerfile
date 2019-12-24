@@ -1,20 +1,29 @@
 ARG APP_NAME
 
+FROM alpine:latest
+ENV APP_NAME_ENV=${APP_NAME}
+RUN echo "1. Variable with double quotes around all APP_NAME    =${APP_NAME} - did you see that?"
+RUN echo "1. Variable with double quotes around all APP_NAME_ENV=${APP_NAME_ENV} - did you see that?"
+RUN echo '2. Variable with single quotes around all APP_NAME    =${APP_NAME} - did you see that?'
+RUN echo '2. Variable with single quotes around all APP_NAME_ENV=${APP_NAME_ENV} - did you see that?'
+RUN echo "3. Variable with double quotes around     APP_NAME    ="${APP_NAME}" - did you see that?"
+RUN echo "3. Variable with double quotes around     APP_NAME_ENV="${APP_NAME_ENV}" - did you see that?"
+RUN echo '4. Variable with single quotes around     APP_NAME    ='${APP_NAME}' - did you see that?'
+RUN echo '4. Variable with single quotes around     APP_NAME_ENV='${APP_NAME_ENV}' - did you see that?'
+RUN echo 5. Variable without quotes                 APP_NAME    =${APP_NAME} - did you see that?
+RUN echo 5. Variable without quotes                 APP_NAME_ENV=${APP_NAME_ENV} - did you see that?
+RUN echo 6. Variable with double quotes             APP_NAME    ="${APP_NAME}" - did you see that?
+RUN echo 6. Variable with double quotes             APP_NAME_ENV="${APP_NAME_ENV}" - did you see that?
+RUN echo 7. Variable with single quotes             APP_NAME    ='${APP_NAME}' - did you see that?
+RUN echo 7. Variable with single quotes             APP_NAME_ENV='${APP_NAME_ENV}' - did you see that?
+COPY docker-entrypoint.sh /
+CMD ["/docker-entrypoint.sh"]
+
+# Ignore the rest... 
+
 # ------------------------------------------------------------------------------
 # Cargo Build Stage
 # ------------------------------------------------------------------------------
-FROM alpine:latest
-ENV APP_NAME_ENV=${APP_NAME}
-RUN echo "Variable with quotes around all APP_NAME    =${APP_NAME} - did you see that?"
-RUN echo "Variable with quotes around all APP_NAME_ENV=${APP_NAME_ENV} - did you see that?"
-RUN echo "Variable with quotes around     APP_NAME    ="${APP_NAME}" - did you see that?"
-RUN echo "Variable with quotes around     APP_NAME_ENV="${APP_NAME_ENV}" - did you see that?"
-RUN echo Variable without quotes         APP_NAME    =${APP_NAME} - did you see that?
-RUN echo Variable without quotes         APP_NAME_ENV=${APP_NAME_ENV} - did you see that?
-RUN echo Variable with quotes            APP_NAME    ="${APP_NAME}" - did you see that?
-RUN echo Variable with quotes            APP_NAME_ENV="${APP_NAME_ENV}" - did you see that?
-COPY docker-entrypoint.sh /
-CMD ["/docker-entrypoint.sh"]
 # FROM rust:latest as cargo-build
 # RUN apt-get update
 # RUN apt-get install musl-tools -y

@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  app:
+    build:
+      args:
+        APP_NAME: ${APP_NAME:?err}
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_NAME: ${APP_NAME:?err}
+    image: "${APP_NAME:?err}:${IMAGE_TAG:?err}"
+    volumes:
+      - .:/app:delegated
+    # command: cargo run

@@ -12,4 +12,3 @@ services:
     image: "${APP_NAME:?err}:${IMAGE_TAG:?err}"
     volumes:
       - .:/app:delegated
-    # command: cargo run

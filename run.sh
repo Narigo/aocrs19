@@ -8,7 +8,7 @@ IMAGE_NAME=${APP_NAME}:${DOCKERFILE_HASH}
 
 if ! docker inspect ${IMAGE_NAME} > /dev/null; then
   echo "--- BUILDING image '${IMAGE_NAME}'---"
-  APP_NAME=${APP_NAME} IMAGE_TAG="${DOCKERFILE_HASH}" docker-compose --verbose build --build-arg APP_NAME=${APP_NAME}
+  APP_NAME=${APP_NAME} IMAGE_TAG="${DOCKERFILE_HASH}" docker-compose build --build-arg APP_NAME=${APP_NAME}
 fi
 
 APP_NAME=${APP_NAME} IMAGE_TAG="${DOCKERFILE_HASH}" docker-compose run --rm --service-ports app $@

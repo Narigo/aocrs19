@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 pub struct ComputationResult {
   pub state: Vec<i64>,
-  pub output: Option<i64>,
+  pub output: VecDeque<i64>,
 }
 
 pub fn computer_1202(
@@ -41,7 +41,7 @@ pub struct Amplifier {
   pub index: usize,
   pub input_value: VecDeque<i64>,
   offset_base: i64,
-  pub output_value: Option<i64>,
+  pub output_value: VecDeque<i64>,
 }
 
 impl Amplifier {
@@ -55,7 +55,7 @@ impl Amplifier {
       index: 0,
       input_value: VecDeque::from(phase_setting.into_iter().collect::<Vec<i64>>()),
       offset_base: 0,
-      output_value: None,
+      output_value: VecDeque::new(),
     }
   }
   fn get_data_at(self: &Amplifier, index: usize) -> i64 {
@@ -71,7 +71,7 @@ impl Amplifier {
     }
     self.program[index] = value;
   }
-  pub fn interprete(self: &mut Amplifier) -> Option<i64> {
+  pub fn interprete(self: &mut Amplifier) -> VecDeque<i64> {
     use Command::*;
     use Parameter::*;
     let debug = false;
@@ -158,7 +158,7 @@ impl Amplifier {
       Output(mode) => {
         let position = get_by_offset(&mode, 1);
         let output_value = self.get_data_at(position);
-        self.output_value = Some(output_value);
+        self.output_value.push_back(output_value);
         println!("OUT: {}", output_value);
         if debug {
           println!(
@@ -297,7 +297,7 @@ impl Amplifier {
       }
     }
   }
-  pub fn calculate_output(&mut self, input_value: i64) -> Option<i64> {
+  pub fn calculate_output(&mut self, input_value: i64) -> VecDeque<i64> {
     self.input_value.push_front(input_value);
     self.interprete()
   }

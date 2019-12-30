@@ -25,7 +25,7 @@ fn find_maximum(amplifier_program: &String) -> i64 {
     let mut input_output_value = 0;
     for phase_setting in permutation.iter() {
       let mut amplifier = Amplifier::new(amplifier_program.clone(), Some(*phase_setting as i64));
-      input_output_value = amplifier
+      input_output_value = *amplifier
         .calculate_output(input_output_value)
         .back()
         .expect("should have an output value");
@@ -68,7 +68,7 @@ fn find_maximum_with_feedback_of_permutation(
   while last_input_output_value < input_output_value {
     last_input_output_value = input_output_value;
     for amplifier in amplifiers.iter_mut() {
-      input_output_value = amplifier
+      input_output_value = *amplifier
         .calculate_output(input_output_value)
         .back()
         .expect("should have an output value");

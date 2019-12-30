@@ -152,7 +152,7 @@ impl Amplifier {
           self.index = self.index + 2;
           self.interprete()
         } else {
-          self.output_value
+          self.output_value.clone()
         }
       }
       Output(mode) => {
@@ -293,7 +293,7 @@ impl Amplifier {
             self.phase_setting, self.index, opcode, " ", " ", " ",
           );
         }
-        self.output_value
+        self.output_value.clone()
       }
     }
   }

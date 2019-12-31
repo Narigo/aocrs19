@@ -134,11 +134,12 @@ pub mod test {
     let mut amplifier1 = Amplifier::new(program.to_owned(), Some(0));
     let mut amplifier2 = Amplifier::new(program.to_owned(), Some(1));
     let result_1_2 = amplifier2.calculate_output(
-      amplifier1
+      *amplifier1
         .calculate_output(2)
+        .back()
         .expect("should have an output value"),
     );
-    assert_eq!(1, result_1_2.expect("should have an output value"));
+    assert_eq!(1, *result_1_2.back().expect("should have an output value"));
   }
 
   #[test]
@@ -147,17 +148,18 @@ pub mod test {
     let mut amplifier1 = Amplifier::new(program.to_owned(), Some(0));
     let mut amplifier2 = Amplifier::new(program.to_owned(), Some(1));
     let result_2_1 = amplifier1.calculate_output(
-      amplifier2
+      *amplifier2
         .calculate_output(2)
+        .back()
         .expect("should have an output value"),
     );
-    assert_eq!(0, result_2_1.expect("should have an output value"));
+    assert_eq!(0, *result_2_1.back().expect("should have an output value"));
   }
 
   #[test]
   fn multiple_input_values() {
     let mut amplifier = Amplifier::new("3,11,3,12,1,11,12,13,4,13,99,-1,-1,-1".to_owned(), Some(1));
     let result = amplifier.calculate_output(2);
-    assert_eq!(3, result.expect("should have an output value"));
+    assert_eq!(3, *result.back().expect("should have an output value"));
   }
 }

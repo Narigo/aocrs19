@@ -364,9 +364,9 @@ mod test {
   #[test]
   fn relative_base_offset_bigger_memory() {
     let input = "104,1125899906842624,99";
-    let expected_output = Some(1125899906842624);
+    let expected_output = vec![1125899906842624];
     assert_eq!(
-      expected_output,
+      VecDeque::from(expected_output),
       computer_1202(&input.to_owned(), false, &mut VecDeque::new()).output
     );
   }
@@ -377,15 +377,24 @@ mod test {
     let result = computer_1202(&input.to_owned(), false, &mut VecDeque::new());
     assert_eq!(
       16,
-      format!("{}", result.output.expect("expected an output value")).len()
+      format!(
+        "{}",
+        result.output.back().expect("expected an output value")
+      )
+      .len()
     );
   }
+
   #[test]
   fn relative_base_offset_quine() {
     let input = "109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99";
     let result = computer_1202(&input.to_owned(), false, &mut VecDeque::new());
-    assert_eq!(204, result.output.expect("should have an output"));
-    assert_eq!(true, false);
+    assert_eq!(
+      VecDeque::from(vec![
+        109, 1, 204, -1, 1001, 100, 1, 100, 1000, 100, 16, 101, 1006, 101, 0, 99
+      ]),
+      result.output
+    );
   }
 
   #[test]
@@ -399,32 +408,37 @@ mod test {
 
     assert_eq!(
       1,
-      computer_1202(&input.to_owned(), false, &mut eq_eight)
+      *computer_1202(&input.to_owned(), false, &mut eq_eight)
         .output
+        .back()
         .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_1)
+      *computer_1202(&input.to_owned(), false, &mut not_eight_1)
         .output
+        .back()
         .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_2)
+      *computer_1202(&input.to_owned(), false, &mut not_eight_2)
         .output
+        .back()
         .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_3)
+      *computer_1202(&input.to_owned(), false, &mut not_eight_3)
         .output
+        .back()
         .expect("should have an output value")
     );
     assert_eq!(
       0,
-      computer_1202(&input.to_owned(), false, &mut not_eight_4)
+      *computer_1202(&input.to_owned(), false, &mut not_eight_4)
         .output
+        .back()
         .expect("should have an output value")
     );
   }
@@ -436,20 +450,23 @@ mod test {
     let mut gt_eight = VecDeque::from(vec![9]);
     assert_eq!(
       999,
-      computer_1202(&input.to_owned(), false, &mut lt_eight)
+      *computer_1202(&input.to_owned(), false, &mut lt_eight)
         .output
+        .back()
         .expect("should have an output value")
     );
     assert_eq!(
       1000,
-      computer_1202(&input.to_owned(), false, &mut eq_eight)
+      *computer_1202(&input.to_owned(), false, &mut eq_eight)
         .output
+        .back()
         .expect("should have an output value")
     );
     assert_eq!(
       1001,
-      computer_1202(&input.to_owned(), false, &mut gt_eight)
+      *computer_1202(&input.to_owned(), false, &mut gt_eight)
         .output
+        .back()
         .expect("should have an output value")
     );
   }
@@ -460,8 +477,9 @@ mod test {
     let expected_output = 0;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter)
+      *computer_1202(&input.to_owned(), false, &mut input_parameter)
         .output
+        .back()
         .expect("should have an output value")
     );
 
@@ -469,8 +487,9 @@ mod test {
     let expected_output = 1;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter)
+      *computer_1202(&input.to_owned(), false, &mut input_parameter)
         .output
+        .back()
         .expect("should have an output value")
     )
   }
@@ -482,8 +501,9 @@ mod test {
     let expected_output = 0;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter)
+      *computer_1202(&input.to_owned(), false, &mut input_parameter)
         .output
+        .back()
         .expect("should have an output value")
     );
 
@@ -491,8 +511,9 @@ mod test {
     let expected_output = 1;
     assert_eq!(
       expected_output,
-      computer_1202(&input.to_owned(), false, &mut input_parameter)
+      *computer_1202(&input.to_owned(), false, &mut input_parameter)
         .output
+        .back()
         .expect("should have an output value")
     )
   }

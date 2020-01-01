@@ -80,7 +80,7 @@ impl Amplifier {
     let get_by_offset = |mode: &Parameter, offset: i64| match mode {
       Position => self.get_data_at((self.index as i64 + offset) as usize) as usize,
       Immediate => (self.index as i64 + offset) as usize,
-      Relative => (self.offset_base + offset) as usize,
+      Relative => (self.offset_base + self.get_data_at(self.index + offset as usize)) as usize,
     };
     match command {
       Add(mode_a, mode_b, mode_position) => {
@@ -159,10 +159,9 @@ impl Amplifier {
         let position = get_by_offset(&mode, 1);
         let output_value = self.get_data_at(position);
         self.output_value.push_back(output_value);
-        println!("OUT: {}", output_value);
         if debug {
           println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?}",
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?} (Base was {:?})",
             self.phase_setting,
             self.index,
             opcode,
@@ -170,7 +169,8 @@ impl Amplifier {
             " ",
             " ",
             position,
-            output_value
+            output_value,
+            self.offset_base
           );
         }
         self.index = self.index + 2;
@@ -283,6 +283,19 @@ impl Amplifier {
       RelativeBaseOffset(mode) => {
         let offset_base = get_by_offset(&mode, 1);
         self.offset_base = offset_base as i64;
+        if debug {
+          println!(
+            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OFFSET {:4} => {:?}",
+            self.phase_setting,
+            self.index,
+            opcode,
+            self.get_data_at(self.index + 1),
+            " ",
+            " ",
+            offset_base,
+            self.offset_base
+          );
+        }
         self.index = self.index + 2;
         self.interprete()
       }
@@ -360,6 +373,16 @@ fn code_to_command(opcode: i64) -> Command {
 mod test {
   use super::computer_1202;
   use std::collections::VecDeque;
+
+  #[test]
+  fn relative_base_offset_mini_example() {
+    let input = "109,1,204,-1,99";
+    let expected = vec![109];
+    assert_eq!(
+      VecDeque::from(expected),
+      computer_1202(&input.to_owned(), false, &mut VecDeque::new()).output
+    );
+  }
 
   #[test]
   fn relative_base_offset_bigger_memory() {

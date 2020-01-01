@@ -75,240 +75,235 @@ impl Amplifier {
     use Command::*;
     use Parameter::*;
     let debug = false;
-    let opcode = self.program[self.index];
-    let command = code_to_command(opcode);
-    let get_by_offset = |mode: &Parameter, offset: i64| match mode {
-      Position => self.get_data_at((self.index as i64 + offset) as usize) as usize,
-      Immediate => (self.index as i64 + offset) as usize,
-      Relative => (self.offset_base + self.get_data_at(self.index + offset as usize)) as usize,
-    };
-    match command {
-      Add(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(&mode_a, 1);
-        let b = get_by_offset(&mode_b, 2);
-        let position = get_by_offset(&mode_position, 3);
-        let output = self.get_data_at(a) + self.get_data_at(b);
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      ADD {} + {} (={}) => {:4}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            self.get_data_at(self.index + 2),
-            self.get_data_at(self.index + 3),
-            self.get_data_at(a),
-            self.get_data_at(b),
-            output,
-            position
-          );
+    let mut done = false;
+    while !done {
+      let opcode = self.program[self.index];
+      let command = code_to_command(opcode);
+      let get_by_offset = |mode: &Parameter, offset: i64| match mode {
+        Position => self.get_data_at((self.index as i64 + offset) as usize) as usize,
+        Immediate => (self.index as i64 + offset) as usize,
+        Relative => (self.offset_base + self.get_data_at(self.index + offset as usize)) as usize,
+      };
+      match command {
+        Add(mode_a, mode_b, mode_position) => {
+          let a = get_by_offset(&mode_a, 1);
+          let b = get_by_offset(&mode_b, 2);
+          let position = get_by_offset(&mode_position, 3);
+          let output = self.get_data_at(a) + self.get_data_at(b);
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      ADD {} + {} (={}) => {:4}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              self.get_data_at(self.index + 2),
+              self.get_data_at(self.index + 3),
+              self.get_data_at(a),
+              self.get_data_at(b),
+              output,
+              position
+            );
+          }
+          self.store_data_at(position, output);
+          self.index = self.index + 4;
         }
-        self.store_data_at(position, output);
-        self.index = self.index + 4;
-        self.interprete()
-      }
-      Multiply(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(&mode_a, 1);
-        let b = get_by_offset(&mode_b, 2);
-        let position = get_by_offset(&mode_position, 3);
-        let output = self.get_data_at(a) * self.get_data_at(b);
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | MULTIPLY {} * {} (={}) => {:4}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            self.get_data_at(self.index + 2),
-            self.get_data_at(self.index + 3),
-            self.get_data_at(a),
-            self.get_data_at(b),
-            output,
-            position,
-          );
+        Multiply(mode_a, mode_b, mode_position) => {
+          let a = get_by_offset(&mode_a, 1);
+          let b = get_by_offset(&mode_b, 2);
+          let position = get_by_offset(&mode_position, 3);
+          let output = self.get_data_at(a) * self.get_data_at(b);
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | MULTIPLY {} * {} (={}) => {:4}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              self.get_data_at(self.index + 2),
+              self.get_data_at(self.index + 3),
+              self.get_data_at(a),
+              self.get_data_at(b),
+              output,
+              position,
+            );
+          }
+          self.store_data_at(position, output);
+          self.index = self.index + 4;
         }
-        self.store_data_at(position, output);
-        self.index = self.index + 4;
-        self.interprete()
-      }
-      Input(mode) => {
-        let position = get_by_offset(&mode, 1);
-        let input = self.input_value.pop_back();
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |    INPUT {:4} => {:?}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            " ",
-            " ",
-            position,
-            input
-          );
+        Input(mode) => {
+          let position = get_by_offset(&mode, 1);
+          let input = self.input_value.pop_back();
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |    INPUT {:4} => {:?}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              " ",
+              " ",
+              position,
+              input
+            );
+          }
+          if input.is_some() {
+            self.store_data_at(position, input.expect("Should have an input value left!"));
+            self.index = self.index + 2;
+          } else {
+            done = true;
+          }
         }
-        if input.is_some() {
-          self.store_data_at(position, input.expect("Should have an input value left!"));
+        Output(mode) => {
+          let position = get_by_offset(&mode, 1);
+          let output_value = self.get_data_at(position);
+          self.output_value.push_back(output_value);
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?} (Base was {:?})",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              " ",
+              " ",
+              position,
+              output_value,
+              self.offset_base
+            );
+          }
           self.index = self.index + 2;
-          self.interprete()
-        } else {
-          self.output_value.clone()
         }
-      }
-      Output(mode) => {
-        let position = get_by_offset(&mode, 1);
-        let output_value = self.get_data_at(position);
-        self.output_value.push_back(output_value);
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?} (Base was {:?})",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            " ",
-            " ",
-            position,
-            output_value,
-            self.offset_base
-          );
+        JumpIfTrue(mode_a, mode_b) => {
+          let test_non_zero = get_by_offset(&mode_a, 1);
+          let next_index = get_by_offset(&mode_b, 2);
+          let next_position = if self.get_data_at(test_non_zero) != 0 {
+            self.get_data_at(next_index) as usize
+          } else {
+            self.index + 3
+          };
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |  JMPTRUE {:4} {:4} => {:?}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              self.get_data_at(self.index + 2),
+              self.get_data_at(self.index + 3),
+              test_non_zero,
+              next_index,
+              next_position
+            );
+          }
+          self.index = next_position;
         }
-        self.index = self.index + 2;
-        self.interprete()
-      }
-      JumpIfTrue(mode_a, mode_b) => {
-        let test_non_zero = get_by_offset(&mode_a, 1);
-        let next_index = get_by_offset(&mode_b, 2);
-        let next_position = if self.get_data_at(test_non_zero) != 0 {
-          self.get_data_at(next_index) as usize
-        } else {
-          self.index + 3
-        };
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |  JMPTRUE {:4} {:4} => {:?}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            self.get_data_at(self.index + 2),
-            self.get_data_at(self.index + 3),
-            test_non_zero,
-            next_index,
-            next_position
-          );
+        JumpIfFalse(mode_a, mode_b) => {
+          let test_zero = get_by_offset(&mode_a, 1);
+          let next_index = get_by_offset(&mode_b, 2);
+          let next_position = if self.get_data_at(test_zero) == 0 {
+            self.get_data_at(next_index) as usize
+          } else {
+            self.index + 3
+          };
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | JMPFALSE {:4} {:4} => {:?}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              self.get_data_at(self.index + 2),
+              self.get_data_at(self.index + 3),
+              test_zero,
+              next_index,
+              next_position
+            );
+          }
+          self.index = next_position;
         }
-        self.index = next_position;
-        self.interprete()
-      }
-      JumpIfFalse(mode_a, mode_b) => {
-        let test_zero = get_by_offset(&mode_a, 1);
-        let next_index = get_by_offset(&mode_b, 2);
-        let next_position = if self.get_data_at(test_zero) == 0 {
-          self.get_data_at(next_index) as usize
-        } else {
-          self.index + 3
-        };
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | JMPFALSE {:4} {:4} => {:?}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            self.get_data_at(self.index + 2),
-            self.get_data_at(self.index + 3),
-            test_zero,
-            next_index,
-            next_position
-          );
+        LessThan(mode_a, mode_b, mode_position) => {
+          let a = get_by_offset(&mode_a, 1);
+          let b = get_by_offset(&mode_b, 2);
+          let position = get_by_offset(&mode_position, 3);
+          let value_to_store = if self.get_data_at(a) < self.get_data_at(b) {
+            1
+          } else {
+            0
+          };
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | LESSTHAN {:4} {:4} => {:?}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              self.get_data_at(self.index + 2),
+              self.get_data_at(self.index + 3),
+              a,
+              b,
+              value_to_store
+            );
+          }
+          self.store_data_at(position, value_to_store);
+          self.index = self.index + 4;
         }
-        self.index = next_position;
-        self.interprete()
-      }
-      LessThan(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(&mode_a, 1);
-        let b = get_by_offset(&mode_b, 2);
-        let position = get_by_offset(&mode_position, 3);
-        let value_to_store = if self.get_data_at(a) < self.get_data_at(b) {
-          1
-        } else {
-          0
-        };
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | LESSTHAN {:4} {:4} => {:?}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            self.get_data_at(self.index + 2),
-            self.get_data_at(self.index + 3),
-            a,
-            b,
-            value_to_store
-          );
+        Equals(mode_a, mode_b, mode_position) => {
+          let a = get_by_offset(&mode_a, 1);
+          let b = get_by_offset(&mode_b, 2);
+          let position = get_by_offset(&mode_position, 3);
+          let value_to_store = if self.get_data_at(a) == self.get_data_at(b) {
+            1
+          } else {
+            0
+          };
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   EQUALS {:4} {:4} => {:?}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              self.get_data_at(self.index + 2),
+              self.get_data_at(self.index + 3),
+              a,
+              b,
+              value_to_store
+            );
+          }
+          self.store_data_at(position, value_to_store);
+          self.index = self.index + 4;
         }
-        self.store_data_at(position, value_to_store);
-        self.index = self.index + 4;
-        self.interprete()
-      }
-      Equals(mode_a, mode_b, mode_position) => {
-        let a = get_by_offset(&mode_a, 1);
-        let b = get_by_offset(&mode_b, 2);
-        let position = get_by_offset(&mode_position, 3);
-        let value_to_store = if self.get_data_at(a) == self.get_data_at(b) {
-          1
-        } else {
-          0
-        };
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   EQUALS {:4} {:4} => {:?}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            self.get_data_at(self.index + 2),
-            self.get_data_at(self.index + 3),
-            a,
-            b,
-            value_to_store
-          );
+        RelativeBaseOffset(mode) => {
+          let offset_base = get_by_offset(&mode, 1);
+          self.offset_base = self.offset_base + offset_base as i64;
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OFFSET {:4} => {:?}",
+              self.phase_setting,
+              self.index,
+              opcode,
+              self.get_data_at(self.index + 1),
+              " ",
+              " ",
+              offset_base,
+              self.offset_base
+            );
+          }
+          self.index = self.index + 2;
         }
-        self.store_data_at(position, value_to_store);
-        self.index = self.index + 4;
-        self.interprete()
-      }
-      RelativeBaseOffset(mode) => {
-        let offset_base = get_by_offset(&mode, 1);
-        self.offset_base = self.offset_base + offset_base as i64;
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OFFSET {:4} => {:?}",
-            self.phase_setting,
-            self.index,
-            opcode,
-            self.get_data_at(self.index + 1),
-            " ",
-            " ",
-            offset_base,
-            self.offset_base
-          );
+        End => {
+          if debug {
+            println!(
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      END",
+              self.phase_setting, self.index, opcode, " ", " ", " ",
+            );
+          }
+          done = true;
         }
-        self.index = self.index + 2;
-        self.interprete()
-      }
-      End => {
-        if debug {
-          println!(
-            "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      END",
-            self.phase_setting, self.index, opcode, " ", " ", " ",
-          );
-        }
-        self.output_value.clone()
       }
     }
+    self.output_value.clone()
   }
   pub fn calculate_output(&mut self, input_value: i64) -> VecDeque<i64> {
     self.input_value.push_front(input_value);
@@ -377,8 +372,8 @@ mod test {
   #[test]
   fn sum_of_primes_test() {
     let input = "3,100,1007,100,2,7,1105,-1,87,1007,100,1,14,1105,-1,27,101,-2,100,100,101,1,101,101,1105,1,9,101,105,101,105,101,2,104,104,101,1,102,102,1,102,102,103,101,1,103,103,7,102,101,52,1106,-1,87,101,105,102,59,1005,-1,65,1,103,104,104,101,105,102,83,1,103,83,83,7,83,105,78,1106,-1,35,1101,0,1,-1,1105,1,69,4,104,99";
-    let input_value = 10;
-    let expected = vec![17];
+    let input_value = 100000;
+    let expected = vec![454396537];
     assert_eq!(
       VecDeque::from(expected),
       computer_1202(

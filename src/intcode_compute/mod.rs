@@ -73,23 +73,37 @@ impl Amplifier {
   }
   pub fn interprete(self: &mut Amplifier) -> VecDeque<i64> {
     use Command::*;
+    use InterpretationMode::*;
     use Parameter::*;
     let debug = false;
     let mut done = false;
     while !done {
       let opcode = self.program[self.index];
       let command = code_to_command(opcode);
-      let get_by_offset = |mode: &Parameter, offset: i64| match mode {
-        Position => self.get_data_at((self.index as i64 + offset) as usize) as usize,
-        Immediate => (self.index as i64 + offset) as usize,
-        Relative => (self.offset_base + self.get_data_at(self.index + offset as usize)) as usize,
-      };
+      let get_by_offset =
+        |mode: &Parameter, offset: i64, interpreted: &InterpretationMode| match mode {
+          Position => {
+            let pos = self.get_data_at((self.index as i64 + offset) as usize);
+            match interpreted {
+              Interpreted => self.get_data_at(pos as usize),
+              _ => pos,
+            }
+          }
+          Immediate => self.get_data_at((self.index as i64 + offset) as usize),
+          Relative => {
+            let pos = self.offset_base + self.get_data_at((self.index as i64 + offset) as usize);
+            match interpreted {
+              Interpreted => self.get_data_at(pos as usize),
+              _ => pos,
+            }
+          }
+        };
       match command {
         Add(mode_a, mode_b, mode_position) => {
-          let a = get_by_offset(&mode_a, 1);
-          let b = get_by_offset(&mode_b, 2);
-          let position = get_by_offset(&mode_position, 3);
-          let output = self.get_data_at(a) + self.get_data_at(b);
+          let a = get_by_offset(&mode_a, 1, &Interpreted);
+          let b = get_by_offset(&mode_b, 2, &Interpreted);
+          let position = get_by_offset(&mode_position, 3, &Literal);
+          let output = a + b;
           if debug {
             println!(
               "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |      ADD {} + {} (={}) => {:4}",
@@ -99,20 +113,20 @@ impl Amplifier {
               self.get_data_at(self.index + 1),
               self.get_data_at(self.index + 2),
               self.get_data_at(self.index + 3),
-              self.get_data_at(a),
-              self.get_data_at(b),
+              a,
+              b,
               output,
               position
             );
           }
-          self.store_data_at(position, output);
+          self.store_data_at(position as usize, output);
           self.index = self.index + 4;
         }
         Multiply(mode_a, mode_b, mode_position) => {
-          let a = get_by_offset(&mode_a, 1);
-          let b = get_by_offset(&mode_b, 2);
-          let position = get_by_offset(&mode_position, 3);
-          let output = self.get_data_at(a) * self.get_data_at(b);
+          let a = get_by_offset(&mode_a, 1, &Interpreted);
+          let b = get_by_offset(&mode_b, 2, &Interpreted);
+          let position = get_by_offset(&mode_position, 3, &Literal);
+          let output = a * b;
           if debug {
             println!(
               "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | MULTIPLY {} * {} (={}) => {:4}",
@@ -122,17 +136,17 @@ impl Amplifier {
               self.get_data_at(self.index + 1),
               self.get_data_at(self.index + 2),
               self.get_data_at(self.index + 3),
-              self.get_data_at(a),
-              self.get_data_at(b),
+              a,
+              b,
               output,
               position,
             );
           }
-          self.store_data_at(position, output);
+          self.store_data_at(position as usize, output);
           self.index = self.index + 4;
         }
         Input(mode) => {
-          let position = get_by_offset(&mode, 1);
+          let position = get_by_offset(&mode, 1, &Literal);
           let input = self.input_value.pop_back();
           if debug {
             println!(
@@ -148,37 +162,37 @@ impl Amplifier {
             );
           }
           if input.is_some() {
-            self.store_data_at(position, input.expect("Should have an input value left!"));
+            self.store_data_at(
+              position as usize,
+              input.expect("Should have an input value left!"),
+            );
             self.index = self.index + 2;
           } else {
             done = true;
           }
         }
         Output(mode) => {
-          let position = get_by_offset(&mode, 1);
-          let output_value = self.get_data_at(position);
+          let output_value = get_by_offset(&mode, 1, &Interpreted);
           self.output_value.push_back(output_value);
           if debug {
             println!(
-              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4} => {:?} (Base was {:?})",
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OUTPUT {:4}",
               self.phase_setting,
               self.index,
               opcode,
               self.get_data_at(self.index + 1),
               " ",
               " ",
-              position,
-              output_value,
-              self.offset_base
+              output_value
             );
           }
           self.index = self.index + 2;
         }
         JumpIfTrue(mode_a, mode_b) => {
-          let test_non_zero = get_by_offset(&mode_a, 1);
-          let next_index = get_by_offset(&mode_b, 2);
-          let next_position = if self.get_data_at(test_non_zero) != 0 {
-            self.get_data_at(next_index) as usize
+          let test_non_zero = get_by_offset(&mode_a, 1, &Interpreted);
+          let next_index = get_by_offset(&mode_b, 2, &Interpreted);
+          let next_position = if test_non_zero != 0 {
+            next_index as usize
           } else {
             self.index + 3
           };
@@ -199,10 +213,10 @@ impl Amplifier {
           self.index = next_position;
         }
         JumpIfFalse(mode_a, mode_b) => {
-          let test_zero = get_by_offset(&mode_a, 1);
-          let next_index = get_by_offset(&mode_b, 2);
-          let next_position = if self.get_data_at(test_zero) == 0 {
-            self.get_data_at(next_index) as usize
+          let test_zero = get_by_offset(&mode_a, 1, &Interpreted);
+          let next_index = get_by_offset(&mode_b, 2, &Interpreted);
+          let next_position = if test_zero == 0 {
+            next_index as usize
           } else {
             self.index + 3
           };
@@ -223,14 +237,10 @@ impl Amplifier {
           self.index = next_position;
         }
         LessThan(mode_a, mode_b, mode_position) => {
-          let a = get_by_offset(&mode_a, 1);
-          let b = get_by_offset(&mode_b, 2);
-          let position = get_by_offset(&mode_position, 3);
-          let value_to_store = if self.get_data_at(a) < self.get_data_at(b) {
-            1
-          } else {
-            0
-          };
+          let a = get_by_offset(&mode_a, 1, &Interpreted);
+          let b = get_by_offset(&mode_b, 2, &Interpreted);
+          let position = get_by_offset(&mode_position, 3, &Literal);
+          let value_to_store = if a < b { 1 } else { 0 };
           if debug {
             println!(
               "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} | LESSTHAN {:4} {:4} => {:?}",
@@ -245,18 +255,14 @@ impl Amplifier {
               value_to_store
             );
           }
-          self.store_data_at(position, value_to_store);
+          self.store_data_at(position as usize, value_to_store);
           self.index = self.index + 4;
         }
         Equals(mode_a, mode_b, mode_position) => {
-          let a = get_by_offset(&mode_a, 1);
-          let b = get_by_offset(&mode_b, 2);
-          let position = get_by_offset(&mode_position, 3);
-          let value_to_store = if self.get_data_at(a) == self.get_data_at(b) {
-            1
-          } else {
-            0
-          };
+          let a = get_by_offset(&mode_a, 1, &Interpreted);
+          let b = get_by_offset(&mode_b, 2, &Interpreted);
+          let position = get_by_offset(&mode_position, 3, &Literal);
+          let value_to_store = if a == b { 1 } else { 0 };
           if debug {
             println!(
               "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   EQUALS {:4} {:4} => {:?}",
@@ -271,15 +277,15 @@ impl Amplifier {
               value_to_store
             );
           }
-          self.store_data_at(position, value_to_store);
+          self.store_data_at(position as usize, value_to_store);
           self.index = self.index + 4;
         }
         RelativeBaseOffset(mode) => {
-          let offset_base = get_by_offset(&mode, 1);
+          let offset_base = get_by_offset(&mode, 1, &Interpreted);
           self.offset_base = self.offset_base + offset_base as i64;
           if debug {
             println!(
-              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OFFSET {:4} => {:?}",
+              "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OFFSET {:4} => new Base = {:?}",
               self.phase_setting,
               self.index,
               opcode,
@@ -316,6 +322,12 @@ enum Parameter {
   Immediate,
   Position,
   Relative,
+}
+
+#[derive(Debug)]
+enum InterpretationMode {
+  Interpreted,
+  Literal,
 }
 
 enum Command {
@@ -370,19 +382,75 @@ mod test {
   use std::collections::VecDeque;
 
   #[test]
-  fn sum_of_primes_test() {
-    let input = "3,100,1007,100,2,7,1105,-1,87,1007,100,1,14,1105,-1,27,101,-2,100,100,101,1,101,101,1105,1,9,101,105,101,105,101,2,104,104,101,1,102,102,1,102,102,103,101,1,103,103,7,102,101,52,1106,-1,87,101,105,102,59,1005,-1,65,1,103,104,104,101,105,102,83,1,103,83,83,7,83,105,78,1106,-1,35,1101,0,1,-1,1105,1,69,4,104,99";
-    let input_value = 100000;
-    let expected = vec![454396537];
-    assert_eq!(
-      VecDeque::from(expected),
-      computer_1202(
-        &input.to_owned(),
-        false,
-        &mut VecDeque::from(vec![input_value])
-      )
-      .output
-    )
+  fn additional_tests_01() {
+    let input = "109,-1,4,1,99";
+    let expected = VecDeque::from(vec![-1]);
+    let mut input_value = VecDeque::new();
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_02() {
+    let input = "109,-1,104,1,99";
+    let expected = VecDeque::from(vec![1]);
+    let mut input_value = VecDeque::new();
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_03() {
+    let input = "109,-1,204,1,99";
+    let expected = VecDeque::from(vec![109]);
+    let mut input_value = VecDeque::new();
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_04() {
+    let input = "109,1,9,2,204,-6,99";
+    let expected = VecDeque::from(vec![204]);
+    let mut input_value = VecDeque::new();
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_05() {
+    let input = "109,1,109,9,204,-6,99";
+    let expected = VecDeque::from(vec![204]);
+    let mut input_value = VecDeque::new();
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_06() {
+    let input = "109,1,209,-1,204,-106,99";
+    let expected = VecDeque::from(vec![204]);
+    let mut input_value = VecDeque::new();
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_07() {
+    let input = "109,1,3,3,204,2,99";
+    let expected = VecDeque::from(vec![123]);
+    let mut input_value = VecDeque::from(vec![123]);
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
+  }
+
+  #[test]
+  fn additional_tests_08() {
+    let input = "109,1,203,2,204,2,99";
+    let expected = VecDeque::from(vec![1234]);
+    let mut input_value = VecDeque::from(vec![1234]);
+    let result = computer_1202(&input.to_owned(), false, &mut input_value).output;
+    assert_eq!(expected, result)
   }
 
   #[test]

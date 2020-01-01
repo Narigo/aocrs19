@@ -28,4 +28,5 @@ fn main() {
     println!("aoc08_01 = {}", aoc08::space_image_format());
     println!("aoc08_02 =\n{}", aoc08::draw_image());
     println!("aoc09_01 = {:?}", aoc09::boost_01());
+    println!("aoc09_02 = {:?}", aoc09::boost_02());
 }

@@ -8,3 +8,10 @@ pub fn boost_01() -> VecDeque<i64> {
   let result = computer_1202(&contents, false, &mut VecDeque::from(vec![1]));
   result.output
 }
+
+pub fn boost_02() -> VecDeque<i64> {
+  let filename = "./src/aoc09/input.txt";
+  let contents = fs::read_to_string(filename).expect("Something went wrong reading the file");
+  let result = computer_1202(&contents, false, &mut VecDeque::from(vec![2]));
+  result.output
+}

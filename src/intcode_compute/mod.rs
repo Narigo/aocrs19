@@ -282,7 +282,7 @@ impl Amplifier {
       }
       RelativeBaseOffset(mode) => {
         let offset_base = get_by_offset(&mode, 1);
-        self.offset_base = offset_base as i64;
+        self.offset_base = self.offset_base + offset_base as i64;
         if debug {
           println!(
             "[AMP {:?}] ({:4}) {:5?} {:4} {:4} {:4} |   OFFSET {:4} => {:?}",
@@ -375,6 +375,22 @@ mod test {
   use std::collections::VecDeque;
 
   #[test]
+  fn sum_of_primes_test() {
+    let input = "3,100,1007,100,2,7,1105,-1,87,1007,100,1,14,1105,-1,27,101,-2,100,100,101,1,101,101,1105,1,9,101,105,101,105,101,2,104,104,101,1,102,102,1,102,102,103,101,1,103,103,7,102,101,52,1106,-1,87,101,105,102,59,1005,-1,65,1,103,104,104,101,105,102,83,1,103,83,83,7,83,105,78,1106,-1,35,1101,0,1,-1,1105,1,69,4,104,99";
+    let input_value = 10;
+    let expected = vec![17];
+    assert_eq!(
+      VecDeque::from(expected),
+      computer_1202(
+        &input.to_owned(),
+        false,
+        &mut VecDeque::from(vec![input_value])
+      )
+      .output
+    )
+  }
+
+  #[test]
   fn relative_base_offset_mini_example() {
     let input = "109,1,204,-1,99";
     let expected = vec![109];
@@ -414,7 +430,7 @@ mod test {
     let result = computer_1202(&input.to_owned(), false, &mut VecDeque::new());
     assert_eq!(
       VecDeque::from(vec![
-        109, 1, 204, -1, 1001, 100, 1, 100, 1000, 100, 16, 101, 1006, 101, 0, 99
+        109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99
       ]),
       result.output
     );

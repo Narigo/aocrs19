@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use std::fs;
 
-type ProgramInput = String;
 type Color = u8;
 type LayerNumber = usize;
 type Layer = (LayerNumber, Vec<Color>);
